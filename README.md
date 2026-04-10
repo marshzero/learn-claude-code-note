@@ -143,38 +143,6 @@ WorktreeManager隔离 (s12)
 4. **Append-Only Inbox**: JSONL追加写入，避免读写冲突
 5. **State Machine**: 单一状态转换规则（如pending→approved/rejected）
 
-## 文件结构
-
-```
-learn-claude-code/
-├── agents/
-│   ├── s01_agent_loop.py
-│   ├── s02_tool_use.py
-│   ├── s03_todo_write.py
-│   ├── s04_subagent.py
-│   ├── s05_skill_loading.py
-│   ├── s06_context_compact.py
-│   ├── s07_task_system.py
-│   ├── s08_background_tasks.py
-│   ├── s09_agent_teams.py
-│   ├── s10_team_protocols.py
-│   ├── s11_autonomous_agents.py
-│   └── s12_worktree_task_isolation.py
-├── chapter01-agent-loop.md
-├── chapter02-tool-use.md
-├── chapter03-todo-write.md
-├── chapter04-subagent.md
-├── chapter05-skill-loading.md
-├── chapter06-context-compact.md
-├── chapter07-task-system.md
-├── chapter08-background-tasks.md
-├── chapter09-agent-teams.md
-├── chapter10-team-protocols.md
-├── chapter11-autonomous-agents.md
-├── chapter12-worktree-isolation.md
-└── chapter-summary.md
-```
-
 ## 进一步探索
 
 - 如何实现任务的优先级调度？
