@@ -1,8 +1,14 @@
-# Claude Code Agent 教程总结
+# learn-claude-code 教程总结
 
 ## 概述
 
-本教程通过12个章节，完整构建了一个多Agent协作系统。每章建立在前一章的基础上，逐步增加复杂性。
+learn-claude-code教程通过12个章节，完整构建了一个多Agent协作系统。每章建立在前一章的基础上，逐步增加复杂性。
+
+教程地址: https://learn.shareai.run/
+
+代码地址: https://github.com/shareAI-lab/learn-claude-code
+
+本文是对该教程的总结，仅供学习和参考。
 
 ## 章节架构
 
