@@ -4,21 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>第一章：Agent Loop - 让LLM调用工具</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
   <style>
     :root {
-      --bg: #0d1117;
-      --bg2: #161b22;
-      --bg3: #21262d;
-      --text: #e6edf3;
-      --text2: #8b949e;
-      --green: #39d353;
-      --green-dim: rgba(57, 211, 83, 0.15);
-      --blue: #58a6ff;
-      --orange: #ffa657;
-      --red: #f85149;
-      --border: #30363d;
-      --font: "JetBrains Mono", monospace;
+      --bg-dark: #0a0a0a;
+      --bg-white: #ffffff;
+      --bg-light: #f8f9fa;
+      --accent-blue: #4361ee;
+      --accent-blue-dark: #2541b2;
+      --text-dark: #0a0a0a;
+      --text-light: #ffffff;
+      --text-gray: #6c757d;
+      --border: #dee2e6;
+      --font: "Manrope", sans-serif;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow-x: hidden; }
@@ -27,120 +25,144 @@
       width: 100vw; height: 100vh; height: 100dvh;
       overflow: hidden; scroll-snap-align: start;
       display: flex; flex-direction: column;
-      position: relative; background: var(--bg);
-      padding: clamp(1.5rem, 4vw, 3rem);
+      position: relative;
     }
-    h1 { font: 700 clamp(2rem, 6vw, 4rem) var(--font); color: var(--text); line-height: 1.2; }
-    h2 { font: 600 clamp(1.3rem, 3vw, 2rem) var(--font); color: var(--green); margin-bottom: 1rem; }
-    p { font: 400 clamp(0.85rem, 1.5vw, 1rem) var(--font); color: var(--text2); line-height: 1.6; }
+    .slide-top {
+      background: var(--bg-white);
+      padding: clamp(1.5rem, 4vw, 3rem);
+      flex: 1;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .slide-bottom {
+      background: var(--accent-blue);
+      padding: clamp(1rem, 3vw, 2rem);
+      min-height: 80px;
+    }
+    .slide-full {
+      background: var(--bg-dark);
+      padding: clamp(1.5rem, 4vw, 3rem);
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    h1 { font: 800 clamp(2rem, 6vw, 4.5rem) var(--font); color: var(--text-dark); line-height: 1.1; }
+    h2 { font: 700 clamp(1.5rem, 3.5vw, 2.5rem) var(--font); color: var(--text-dark); margin-bottom: 1rem; }
+    h3 { font: 600 clamp(1.1rem, 2vw, 1.5rem) var(--font); color: var(--accent-blue); margin-bottom: 0.5rem; }
+    p { font: 400 clamp(0.9rem, 1.5vw, 1.1rem) var(--font); color: var(--text-gray); line-height: 1.6; }
     ul { list-style: none; }
-    ul li { padding-left: 1.2em; position: relative; margin-bottom: 0.5em; font: 400 clamp(0.85rem, 1.5vw, 1rem) var(--font); color: var(--text2); }
-    ul li::before { content: ">"; position: absolute; left: 0; color: var(--green); }
-    code { font: 400 0.9em var(--font); background: var(--bg2); padding: 0.15em 0.4em; border-radius: 4px; color: var(--green); border: 1px solid var(--border); }
-    pre { font: 400 0.8em var(--font); background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1em; overflow-x: auto; white-space: pre-wrap; word-break: break-all; line-height: 1.5; color: var(--text); }
-    .grid-bg { background: var(--bg); }
-    .center { display: flex; align-items: center; justify-content: center; }
-    .col { display: flex; flex-direction: column; }
-    .gap1 { gap: 0.5rem; }
-    .gap2 { gap: 1rem; }
-    .gap3 { gap: 1.5rem; }
+    ul li { padding-left: 1.2em; position: relative; margin-bottom: 0.5em; font: 500 clamp(0.9rem, 1.5vw, 1rem) var(--font); color: var(--text-gray); }
+    ul li::before { content: ""; position: absolute; left: 0; top: 0.5em; width: 6px; height: 6px; background: var(--accent-blue); border-radius: 50%; }
+    code { font: 600 0.85em var(--font); background: rgba(67, 97, 238, 0.1); color: var(--accent-blue); padding: 0.15em 0.5em; border-radius: 4px; }
+    pre { font: 500 0.85em var(--font); background: var(--bg-dark); color: var(--text-light); border-radius: 12px; padding: 1.2em; overflow-x: auto; line-height: 1.5; }
+    .text-white { color: var(--text-light); }
+    .text-dark { color: var(--text-dark); }
+    .text-gray { color: var(--text-gray); }
+    .text-accent { color: var(--accent-blue); }
+    .text-white-secondary { color: rgba(255,255,255,0.7); }
+
+    /* === LAYOUT === */
+    .split-layout { display: flex; flex: 1; }
+    .split-left { background: var(--accent-blue); padding: clamp(1.5rem, 4vw, 3rem); flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .split-right { background: var(--bg-white); padding: clamp(1.5rem, 4vw, 3rem); flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+    /* === ELEMENTS === */
+    .accent-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--accent-blue); }
+    .blue-box { background: var(--accent-blue); border-radius: 12px; padding: 1rem 1.5rem; }
+    .white-box { background: var(--bg-white); border: 2px solid var(--border); border-radius: 12px; padding: 1rem 1.5rem; }
+    .dark-box { background: var(--bg-dark); border-radius: 12px; padding: 1rem 1.5rem; }
+    .tag { display: inline-block; background: var(--accent-blue); color: white; padding: 0.3em 0.8em; border-radius: 4px; font: 700 0.75em var(--font); margin-bottom: 0.5rem; }
 
     /* === FLOW DIAGRAM === */
     .flow-center { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-    .flow-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .flow-row { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
     .flow-box {
-      background: var(--bg3);
-      border: 2px solid var(--green);
-      border-radius: 12px;
+      background: var(--bg-white);
+      border: 3px solid var(--text-dark);
+      border-radius: 16px;
       padding: 0.8rem 1.5rem;
       text-align: center;
+      min-width: 100px;
     }
-    .flow-box-blue { border-color: var(--blue); }
-    .flow-box-orange { border-color: var(--orange); }
+    .flow-box-blue { border-color: var(--accent-blue); }
+    .flow-box-dark { background: var(--bg-dark); border-color: var(--bg-dark); }
     .flow-icon { font-size: 1.8rem; }
-    .flow-label { font: 600 0.9em var(--font); color: var(--green); margin-top: 0.3em; }
-    .flow-label-blue { color: var(--blue); }
-    .flow-label-orange { color: var(--orange); }
-    .flow-sub { font: 400 0.7em var(--font); color: var(--text2); margin-top: 0.2em; }
-    .flow-arrow { font-size: 1.5rem; color: var(--green); }
-    .flow-arrow-down { font-size: 2rem; color: var(--green); }
+    .flow-label { font: 800 0.9em var(--font); color: var(--text-dark); margin-top: 0.3em; }
+    .flow-label-white { color: var(--text-light); }
+    .flow-sub { font: 500 0.7em var(--font); color: var(--text-gray); margin-top: 0.2em; }
+    .flow-arrow { font-size: 1.5rem; color: var(--text-dark); }
+    .flow-arrow-white { color: var(--text-light); }
     .flow-loop {
       display: flex; align-items: center; gap: 0.5rem;
-      background: var(--green-dim);
-      border: 1px solid var(--green);
-      border-radius: 6px;
-      padding: 0.3em 0.8em;
-      font: 500 0.8em var(--font); color: var(--green);
+      background: var(--accent-blue);
+      border-radius: 8px;
+      padding: 0.5em 1em;
+      font: 700 0.8em var(--font); color: var(--text-light);
     }
 
-    /* === WHILE LOOP DIAGRAM === */
+    /* === WHILE BOX === */
     .while-box {
-      background: var(--bg3);
-      border: 2px solid var(--blue);
-      border-radius: 12px;
+      background: var(--bg-dark);
+      border-radius: 16px;
       padding: 1.5rem 2rem;
-      text-align: center;
-      max-width: 400px;
+      max-width: 450px;
       margin: 0 auto;
     }
-    .while-title { font: 700 1.1em var(--font); color: var(--blue); margin-bottom: 0.5em; }
-    .while-code { font: 400 0.9em var(--font); color: var(--text); text-align: left; }
-    .while-code .kw { color: var(--blue); }
-    .while-code .var { color: var(--orange); }
-    .while-code .str { color: var(--green); }
+    .while-title { font: 800 1em var(--font); color: var(--accent-blue); margin-bottom: 0.8em; }
+    .while-code { font: 500 0.9em var(--font); color: var(--text-light); text-align: left; line-height: 1.6; }
+    .while-code .kw { color: #7ee787; }
+    .while-code .var { color: #ffa657; }
+    .while-code .str { color: #a5d6ff; }
+    .while-code .cmt { color: rgba(255,255,255,0.4); }
 
-    /* === CODE BLOCKS === */
-    .code-section { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
-    .code-title { font: 600 0.85em var(--font); color: var(--green); margin-bottom: 0.5em; }
+    /* === CODE SECTION === */
+    .code-section { background: var(--bg-light); border-radius: 12px; padding: 1rem; margin-top: 1rem; }
+    .code-title { font: 700 0.8em var(--font); color: var(--accent-blue); margin-bottom: 0.5em; }
 
     /* === MESSAGES ARRAY === */
-    .msg-array { display: flex; flex-direction: column; gap: 0.5rem; max-width: 700px; margin: 0 auto; }
+    .msg-array { display: flex; flex-direction: column; gap: 0.5rem; max-width: 650px; margin: 0 auto; }
     .msg-item {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      background: var(--bg-white);
+      border: 2px solid var(--border);
+      border-radius: 10px;
       padding: 0.6rem 1rem;
       display: flex;
       align-items: flex-start;
       gap: 0.8rem;
     }
     .msg-role {
-      background: var(--green-dim);
-      color: var(--green);
-      padding: 0.2em 0.5em;
+      background: var(--accent-blue);
+      color: white;
+      padding: 0.2em 0.6em;
       border-radius: 4px;
-      font: 600 0.7em var(--font);
+      font: 700 0.7em var(--font);
       white-space: nowrap;
     }
-    .msg-role-user { background: rgba(88, 166, 255, 0.15); color: var(--blue); }
-    .msg-role-ai { background: var(--green-dim); color: var(--green); }
-    .msg-role-system { background: rgba(255, 166, 87, 0.15); color: var(--orange); }
-    .msg-content { font: 400 0.75em var(--font); color: var(--text); flex: 1; overflow-x: auto; }
-
-    /* === BADGE === */
-    .badge { display: inline-block; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); padding: 0.3em 0.8em; border-radius: 4px; font: 500 0.8em var(--font); margin-bottom: 1rem; }
+    .msg-role-dark { background: var(--bg-dark); }
+    .msg-content { font: 500 0.75em var(--font); color: var(--text-dark); flex: 1; }
 
     /* === CALLOUT === */
-    .callout { background: var(--green-dim); border-left: 4px solid var(--green); padding: 0.8rem 1rem; border-radius: 0 8px 8px 0; margin-top: 1rem; }
-    .callout p { color: var(--text); }
-    .callout-center { background: var(--green-dim); border: 1px solid var(--green); border-radius: 8px; padding: 1rem; text-align: center; margin-top: 1rem; }
-    .callout-center p { color: var(--text); }
+    .callout { background: var(--accent-blue); border-radius: 12px; padding: 1rem 1.5rem; margin-top: 1rem; }
+    .callout p { color: var(--text-light); }
+    .callout-dark { background: var(--bg-dark); border-left: 4px solid var(--accent-blue); padding: 1rem; border-radius: 0 12px 12px 0; }
+    .callout-dark p { color: var(--text-light); }
+
+    /* === CARD === */
+    .card { background: var(--bg-white); border: 2px solid var(--border); border-radius: 12px; padding: 1rem; }
+    .card h3 { margin-bottom: 0.3em; }
+    .card p { font-size: 0.9em; }
 
     /* === NAV === */
-    .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--green); z-index: 101; transition: width 0.3s; }
+    .progress-bar { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent-blue); z-index: 101; transition: width 0.3s; }
     .nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
-    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text2); opacity: 0.3; cursor: pointer; }
-    .nav-dot.active { background: var(--green); opacity: 1; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); cursor: pointer; transition: all 0.3s; }
+    .nav-dot.active { background: var(--accent-blue); transform: scale(1.3); }
 
     /* === REVEAL === */
-    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s, transform 0.5s; }
+    .reveal { opacity: 0; transform: translateY(15px); transition: opacity 0.5s, transform 0.5s; }
     .visible .reveal { opacity: 1; transform: translateY(0); }
     .visible .reveal:nth-child(2) { transition-delay: 0.1s; }
     .visible .reveal:nth-child(3) { transition-delay: 0.2s; }
     .visible .reveal:nth-child(4) { transition-delay: 0.3s; }
     .visible .reveal:nth-child(5) { transition-delay: 0.4s; }
     .visible .reveal:nth-child(6) { transition-delay: 0.5s; }
-    .visible .reveal:nth-child(7) { transition-delay: 0.6s; }
   </style>
 </head>
 <body>
@@ -148,219 +170,271 @@
   <nav class="nav-dots" id="navDots"></nav>
 
   <!-- SLIDE 1: 标题 -->
-  <section class="slide grid-bg center">
-    <div class="col center gap2">
-      <span class="badge reveal">Chapter 01</span>
-      <h1 class="reveal">Agent Loop</h1>
-      <p class="reveal" style="font-size: 1.2em;">让LLM真正"动手"做事</p>
+  <section class="slide">
+    <div class="split-layout">
+      <div class="split-left">
+        <span class="tag reveal">Chapter 01</span>
+        <h1 class="reveal">Agent Loop</h1>
+        <p class="reveal" style="font-size: 1.3em; color: rgba(255,255,255,0.7); margin-top: 0.5em;">让LLM真正"动手"做事</p>
+      </div>
+      <div class="split-right">
+        <div class="reveal" style="display: flex; flex-direction: column; gap: 1rem;">
+          <h3>核心思想</h3>
+          <p>用简单的循环机制，让LLM能够调用工具、执行操作、获取结果，真正成为一个能"动手做事"的Agent。</p>
+          <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <div class="blue-box"><span class="text-white" style="font-weight: 700;">while</span></div>
+            <div class="dark-box"><span class="text-white" style="font-weight: 700;">stop_reason</span></div>
+          </div>
+        </div>
+      </div>
     </div>
+    <div class="slide-bottom"></div>
   </section>
 
   <!-- SLIDE 2: 问题 -->
-  <section class="slide grid-bg">
-    <h2 class="reveal">问题：LLM只能给建议，不能执行</h2>
-    <p class="reveal">当我们让LLM"读取当前目录下的所有文件"时：</p>
-    <ul class="reveal">
-      <li>LLM可以分析这个问题</li>
-      <li>但它<strong style="color: var(--red);">无法真正执行</strong>任何操作</li>
-      <li>它不知道当前目录有什么文件</li>
-    </ul>
-    <div class="callout reveal">
-      <p><strong>传统方案：</strong>LLM给出步骤指引，用户手动执行，再把结果粘贴回给LLM。中间的"翻译"工作全部由人完成，LLM只是一个"顾问"。</p>
+  <section class="slide">
+    <div class="accent-bar"></div>
+    <div class="slide-top">
+      <h2 class="reveal">问题：LLM只能给建议，不能执行</h2>
+      <p class="reveal">当我们让LLM"读取当前目录下的所有文件"时：</p>
+      <ul class="reveal" style="margin-top: 1rem;">
+        <li>LLM可以分析这个问题</li>
+        <li>但它<strong style="color: #dc3545;">无法真正执行</strong>任何操作</li>
+        <li>它不知道当前目录有什么文件</li>
+      </ul>
+      <div class="callout-dark reveal">
+        <p><strong>传统方案：</strong>LLM给出步骤指引，用户手动执行，再把结果粘贴回给LLM。中间的"翻译"工作全部由人完成，LLM只是一个"顾问"。</p>
+      </div>
+      <div class="callout reveal" style="margin-top: 1rem;">
+        <p style="font-size: 1.1em;"><strong>核心问题：</strong>如何让LLM真正"动手"做事？</p>
+      </div>
     </div>
-    <div class="callout-center reveal" style="background: rgba(255,166,87,0.15); border-color: var(--orange);">
-      <p style="font-size: 1.1em;"><strong style="color: var(--orange);">核心问题：</strong>如何让LLM真正"动手"做事？</p>
-    </div>
+    <div class="slide-bottom"></div>
   </section>
 
   <!-- SLIDE 3: 解决方案 -->
-  <section class="slide grid-bg center">
-    <div class="col center gap2">
-      <h2 class="reveal">解决方案：用循环</h2>
-      <p class="reveal" style="font-size: 1.1em; color: var(--text);">答案出乎意料地简单</p>
+  <section class="slide">
+    <div class="slide-full">
+      <div class="flow-center reveal">
+        <h2 style="color: var(--text-light);">解决方案</h2>
+        <p class="text-white-secondary" style="font-size: 1.2em;">答案出乎意料地简单</p>
+        <div class="blue-box" style="margin-top: 1.5rem; padding: 1.5rem 2.5rem;">
+          <span class="text-white" style="font-size: 1.5em; font-weight: 800;">用循环</span>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- SLIDE 4: 循环流程 -->
-  <section class="slide grid-bg">
-    <h2 class="reveal">Agent Loop 是怎么跑的？</h2>
-    <div class="flow-center reveal">
-      <div class="flow-row">
-        <div class="flow-box">
-          <div class="flow-icon">👤</div>
-          <div class="flow-label">User</div>
-          <div class="flow-sub">提出请求</div>
+  <section class="slide">
+    <div class="accent-bar"></div>
+    <div class="slide-top">
+      <h2 class="reveal">Agent Loop 是怎么跑的？</h2>
+      <div class="flow-center reveal">
+        <div class="flow-row">
+          <div class="flow-box">
+            <div class="flow-icon">👤</div>
+            <div class="flow-label">User</div>
+            <div class="flow-sub">提出请求</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box flow-box-blue">
+            <div class="flow-icon">🧠</div>
+            <div class="flow-label" style="color: var(--accent-blue);">LLM</div>
+            <div class="flow-sub">决定调用工具？</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="flow-icon">⚙️</div>
+            <div class="flow-label">Tool</div>
+            <div class="flow-sub">执行操作</div>
+          </div>
         </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-box flow-box-blue">
-          <div class="flow-icon">🧠</div>
-          <div class="flow-label flow-label-blue">LLM</div>
-          <div class="flow-sub">决定调用工具？</div>
+
+        <div style="font-size: 1.5rem; color: var(--accent-blue); margin: 0.5rem 0;">↓</div>
+
+        <div class="flow-loop">
+          <span>tool_result</span>
+          <span style="opacity: 0.7;">反馈给LLM</span>
         </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-box">
-          <div class="flow-icon">⚙️</div>
-          <div class="flow-label">Tool</div>
-          <div class="flow-sub">执行操作</div>
-        </div>
+
+        <div style="font-size: 1.5rem; color: var(--accent-blue);">↻</div>
+        <p class="text-gray">继续下一轮...</p>
       </div>
-
-      <div class="flow-arrow-down">↓</div>
-
-      <div class="flow-loop">
-        <span>tool_result</span>
-        <span style="color: var(--text2);">反馈给LLM</span>
-      </div>
-
-      <div class="flow-arrow-down">↻</div>
-      <p style="color: var(--text);">继续下一轮...</p>
     </div>
+    <div class="slide-bottom"></div>
   </section>
 
-  <!-- SLIDE 5: 核心：while循环 -->
-  <section class="slide grid-bg center">
-    <h2 class="reveal">核心：while循环</h2>
-    <div class="while-box reveal">
-      <div class="while-title">while stop_reason == "tool_use":</div>
-      <div class="while-code">
-        <span class="kw">response</span> = llm.call(messages)<br/><br/>
-        <span class="kw">if</span> <span class="var">response.stop_reason</span> != <span class="str">"tool_use"</span>:<br/>
-        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">break</span>&nbsp;&nbsp;<span style="color: var(--text2);"># 停止</span><br/><br/>
-        execute_tools(response)<br/>
-        messages.append(tool_result)
+  <!-- SLIDE 5: 核心while循环 -->
+  <section class="slide">
+    <div class="slide-full">
+      <div class="flow-center reveal">
+        <h2 style="color: var(--text-light);">核心：while循环</h2>
+        <div class="while-box">
+          <div class="while-title">while stop_reason == "tool_use":</div>
+          <div class="while-code">
+            <span class="kw">response</span> = llm.call(messages)<br/><br/>
+            <span class="kw">if</span> <span class="var">response.stop_reason</span> != <span class="str">"tool_use"</span>:<br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">break</span> <span class="cmt"># 停止</span><br/><br/>
+            execute_tools(response)<br/>
+            messages.append(tool_result)
+          </div>
+        </div>
+        <div class="blue-box reveal" style="margin-top: 1.5rem;">
+          <p class="text-white"><code>stop_reason</code> 决定是否继续循环</p>
+        </div>
       </div>
-    </div>
-    <div class="callout-center reveal">
-      <p><code>stop_reason</code> 决定是否继续循环</p>
     </div>
   </section>
 
   <!-- SLIDE 6: stop_reason -->
-  <section class="slide grid-bg">
-    <h2 class="reveal">stop_reason：循环的开关</h2>
-    <div class="flow-row reveal" style="margin: 1.5rem 0; gap: 2rem;">
-      <div class="flow-box flow-box-blue" style="border-color: var(--blue);">
-        <div class="flow-label flow-label-blue">tool_use</div>
-        <div class="flow-sub">LLM想调用工具 → 继续循环</div>
+  <section class="slide">
+    <div class="accent-bar"></div>
+    <div class="slide-top">
+      <h2 class="reveal">stop_reason：循环的开关</h2>
+      <div class="reveal" style="display: flex; gap: 1rem; margin: 1.5rem 0; flex-wrap: wrap; justify-content: center;">
+        <div class="card" style="border-color: var(--accent-blue); flex: 1; min-width: 150px; text-align: center;">
+          <h3>tool_use</h3>
+          <p>LLM想调用工具<br/>→ 继续循环</p>
+        </div>
+        <div class="card" style="border-color: #28a745; flex: 1; min-width: 150px; text-align: center;">
+          <h3 style="color: #28a745;">end_turn</h3>
+          <p>任务完成<br/>→ 退出循环</p>
+        </div>
+        <div class="card" style="border-color: #dc3545; flex: 1; min-width: 150px; text-align: center;">
+          <h3 style="color: #dc3545;">max_tokens</h3>
+          <p>输出超限<br/>→ 异常退出</p>
+        </div>
       </div>
-      <div class="flow-box" style="border-color: var(--green);">
-        <div class="flow-label" style="color: var(--green);">end_turn</div>
-        <div class="flow-sub">任务完成 → 退出循环</div>
-      </div>
-      <div class="flow-box" style="border-color: var(--red);">
-        <div class="flow-label" style="color: var(--red);">max_tokens</div>
-        <div class="flow-sub">输出超限 → 异常退出</div>
-      </div>
-    </div>
-    <div class="code-section reveal">
-      <div class="code-title">判断逻辑</div>
-      <pre><code>if response.stop_reason != "tool_use":
+      <div class="code-section reveal">
+        <div class="code-title">判断逻辑</div>
+        <pre><code>if response.stop_reason != "tool_use":
     return  # 退出循环</code></pre>
+      </div>
     </div>
+    <div class="slide-bottom"></div>
   </section>
 
   <!-- SLIDE 7: tool_use块 -->
-  <section class="slide grid-bg">
-    <h2 class="reveal">tool_use 块：传递任务给工具</h2>
-    <p class="reveal">LLM的回复是一个内容块列表，每个块可能是 <code>text</code> 或 <code>tool_use</code></p>
-    <div class="code-section reveal">
-      <div class="code-title">解析 tool_use 块</div>
-      <pre><code>for block in response.content:
+  <section class="slide">
+    <div class="accent-bar"></div>
+    <div class="slide-top">
+      <h2 class="reveal">tool_use 块：传递任务给工具</h2>
+      <p class="reveal">LLM的回复是一个内容块列表，每个块可能是 <code>text</code> 或 <code>tool_use</code></p>
+      <div class="code-section reveal">
+        <div class="code-title">解析 tool_use 块</div>
+        <pre><code>for block in response.content:
     if block.type == "tool_use":
         tool_name = block.name      # 工具名
         tool_input = block.input   # 参数
         tool_id = block.id          # 调用ID</code></pre>
+      </div>
     </div>
+    <div class="slide-bottom"></div>
   </section>
 
   <!-- SLIDE 8: messages数组增长 -->
-  <section class="slide grid-bg">
-    <h2 class="reveal">messages 数组是怎么增长的？</h2>
-    <p class="reveal">每轮循环后，messages数组都会追加新的内容</p>
-    <div class="msg-array reveal">
-      <div class="msg-item">
-        <span class="msg-role msg-role-system">system</span>
-        <span class="msg-content">You are a helpful assistant. Tools: bash, read, write...</span>
+  <section class="slide">
+    <div class="accent-bar"></div>
+    <div class="slide-top">
+      <h2 class="reveal">messages 数组是怎么增长的？</h2>
+      <p class="reveal">每轮循环后，messages数组都会追加新的内容</p>
+      <div class="msg-array reveal">
+        <div class="msg-item">
+          <span class="msg-role msg-role-dark">system</span>
+          <span class="msg-content">You are a helpful assistant. Tools: bash, read, write...</span>
+        </div>
+        <div class="msg-item">
+          <span class="msg-role">user</span>
+          <span class="msg-content">List all Python files</span>
+        </div>
+        <div class="msg-item">
+          <span class="msg-role msg-role-dark">assistant</span>
+          <span class="msg-content">stop_reason: "tool_use" → {type: "tool_use", name: "bash", ...}</span>
+        </div>
+        <div class="msg-item">
+          <span class="msg-role">user</span>
+          <span class="msg-content">tool_result: "hello.py greet.py main.py"</span>
+        </div>
+        <div class="msg-item">
+          <span class="msg-role msg-role-dark">assistant</span>
+          <span class="msg-content">stop_reason: "end_turn" → "目录下有3个Python文件"</span>
+        </div>
       </div>
-      <div class="msg-item">
-        <span class="msg-role msg-role-user">user</span>
-        <span class="msg-content">List all Python files</span>
-      </div>
-      <div class="msg-item">
-        <span class="msg-role msg-role-ai">assistant</span>
-        <span class="msg-content">stop_reason: "tool_use" → {type: "tool_use", name: "bash", ...}</span>
-      </div>
-      <div class="msg-item">
-        <span class="msg-role msg-role-user">user</span>
-        <span class="msg-content">tool_result: "hello.py\ngreet.py\nmain.py"</span>
-      </div>
-      <div class="msg-item">
-        <span class="msg-role msg-role-ai">assistant</span>
-        <span class="msg-content">stop_reason: "end_turn" → "目录下有3个Python文件"</span>
+      <div class="callout-dark reveal">
+        <p>messages数组记录了完整的对话历史，每一轮的请求和响应都被追加进去。</p>
       </div>
     </div>
-    <div class="callout reveal">
-      <p>messages数组记录了完整的对话历史，每一轮的请求和响应都被追加进去。</p>
-    </div>
+    <div class="slide-bottom"></div>
   </section>
 
   <!-- SLIDE 9: 完整闭环 -->
-  <section class="slide grid-bg center">
-    <h2 class="reveal">完整的闭环</h2>
-    <div class="flow-center reveal">
-      <div class="flow-row">
-        <div class="flow-box" style="min-width: 140px;">
-          <div class="flow-label">1. 发请求</div>
-          <div class="flow-sub">messages.append(user)</div>
+  <section class="slide">
+    <div class="slide-full">
+      <div class="flow-center reveal">
+        <h2 style="color: var(--text-light);">完整的闭环</h2>
+        <div class="flow-row" style="margin-top: 1rem;">
+          <div class="flow-box flow-box-dark">
+            <div class="flow-label flow-label-white">1. 发请求</div>
+            <div class="flow-sub" style="color: rgba(255,255,255,0.6);">messages.append(user)</div>
+          </div>
+          <div class="flow-arrow flow-arrow-white">→</div>
+          <div class="flow-box flow-box-blue">
+            <div class="flow-label" style="color: var(--text-light);">2. LLM思考</div>
+            <div class="flow-sub" style="color: rgba(255,255,255,0.7);">stop_reason?</div>
+          </div>
+          <div class="flow-arrow flow-arrow-white">→</div>
+          <div class="flow-box flow-box-dark">
+            <div class="flow-label flow-label-white">3. 执行工具</div>
+            <div class="flow-sub" style="color: rgba(255,255,255,0.6);">返回tool_result</div>
+          </div>
         </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-box flow-box-blue" style="min-width: 140px;">
-          <div class="flow-label flow-label-blue">2. LLM思考</div>
-          <div class="flow-sub">stop_reason?</div>
+
+        <div style="font-size: 1.5rem; color: var(--text-light); margin: 0.8rem 0;">↓</div>
+
+        <div class="flow-loop">
+          <span>messages.append(tool_result)</span>
         </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-box" style="min-width: 140px;">
-          <div class="flow-label">3. 执行工具</div>
-          <div class="flow-sub">返回tool_result</div>
+
+        <div style="font-size: 1.5rem; color: var(--text-light);">↻</div>
+
+        <p style="color: var(--text-light); margin-top: 0.5rem;">继续下一轮...</p>
+
+        <div class="blue-box reveal" style="margin-top: 1rem; padding: 1rem 2rem;">
+          <p class="text-white" style="font-weight: 700;">直到 stop_reason != "tool_use"</p>
         </div>
-      </div>
-
-      <div class="flow-arrow-down">↓</div>
-
-      <div class="flow-loop">
-        <span>messages.append(tool_result)</span>
-      </div>
-
-      <div class="flow-arrow-down">↻</div>
-
-      <p style="color: var(--green); margin-top: 0.5rem;">继续下一轮...</p>
-
-      <div style="margin-top: 1rem; padding: 1rem; background: var(--bg3); border-radius: 8px; border: 1px solid var(--green);">
-        <p style="color: var(--green);">直到 <code>stop_reason != "tool_use"</code></p>
       </div>
     </div>
   </section>
 
   <!-- SLIDE 10: 实战 -->
-  <section class="slide grid-bg">
-    <h2 class="reveal">实战尝试</h2>
-    <pre class="reveal"><code>python agents/s01_agent_loop.py</code></pre>
-    <p class="reveal" style="margin-top: 1rem;">试试这些命令：</p>
-    <ul class="reveal">
-      <li>Create a file called hello.py that prints "Hello, World!"</li>
-      <li>List all Python files in this directory</li>
-      <li>What is the current git branch?</li>
-    </ul>
-    <div class="callout reveal">
-      <p>你会看到LLM如何一步步思考、调用工具、获取结果、再继续思考的完整过程。</p>
+  <section class="slide">
+    <div class="accent-bar"></div>
+    <div class="slide-top">
+      <h2 class="reveal">实战尝试</h2>
+      <div class="code-section reveal">
+        <pre><code>python agents/s01_agent_loop.py</code></pre>
+      </div>
+      <p class="reveal" style="margin-top: 1rem;">试试这些命令：</p>
+      <ul class="reveal">
+        <li>Create a file called hello.py that prints "Hello, World!"</li>
+        <li>List all Python files in this directory</li>
+        <li>What is the current git branch?</li>
+      </ul>
+      <div class="callout reveal">
+        <p>你会看到LLM如何一步步思考、调用工具、获取结果、再继续思考的完整过程。</p>
+      </div>
     </div>
+    <div class="slide-bottom"></div>
   </section>
 
   <!-- SLIDE 11: 结束 -->
-  <section class="slide grid-bg center">
-    <div class="col center gap2">
-      <h1 class="reveal">Thanks</h1>
-      <p class="reveal">Chapter 01 - Agent Loop</p>
+  <section class="slide">
+    <div class="slide-full">
+      <div class="flow-center reveal">
+        <h1 style="color: var(--text-light);">Thanks</h1>
+        <p class="text-white-secondary" style="font-size: 1.2em; margin-top: 0.5em;">Chapter 01 - Agent Loop</p>
+      </div>
     </div>
   </section>
 
@@ -408,7 +482,7 @@
       nextSlide() { if (this.currentSlide < this.slides.length - 1) { this.currentSlide++; this.scrollToSlide(this.currentSlide); } }
       prevSlide() { if (this.currentSlide > 0) { this.currentSlide--; this.scrollToSlide(this.currentSlide); } }
       scrollToSlide(index) { this.slides[index].scrollIntoView({ behavior: "smooth" }); }
-      updateProgressBar() { const progress = ((this.currentSlide + 1) / this.slides.length) * 100; this.progressBar.style.width = progress + "%"; }
+      updateProgressBar() { const progress = ((this.currentSlide + 1) / this.slides.length) * 100; this.progressBar.style.width progress + "%"; }
       setupNavDots() {
         this.navDotsContainer.innerHTML = "";
         this.slides.forEach((_, index) => {
