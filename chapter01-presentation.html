@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>第一章：让LLM调用工具——Agent Loop的设计</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" />
+    <style>
+      /* ===========================================
+         CSS CUSTOM PROPERTIES (THEME)
+         Terminal Green - Developer-focused, hacker aesthetic
+         =========================================== */
+      :root {
+        --bg-primary: #0d1117;
+        --bg-secondary: #161b22;
+        --bg-card: #21262d;
+        --text-primary: #e6edf3;
+        --text-secondary: #8b949e;
+        --accent: #39d353;
+        --accent-dim: rgba(57, 211, 83, 0.15);
+        --accent-glow: rgba(57, 211, 83, 0.4);
+        --code-bg: #0d1117;
+        --border-color: #30363d;
+
+        --font-mono: "JetBrains Mono", monospace;
+        --title-size: clamp(1.75rem, 5vw, 3.5rem);
+        --h2-size: clamp(1.25rem, 3vw, 2rem);
+        --h3-size: clamp(1rem, 2vw, 1.5rem);
+        --body-size: clamp(0.75rem, 1.5vw, 1.1rem);
+        --code-size: clamp(0.65rem, 1.2vw, 0.9rem);
+
+        --slide-padding: clamp(1.5rem, 4vw, 4rem);
+        --content-gap: clamp(0.75rem, 2vw, 1.5rem);
+        --element-gap: clamp(0.5rem, 1vw, 1rem);
+
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        --duration-normal: 0.6s;
+      }
+
+      /* ===========================================
+         BASE STYLES
+         =========================================== */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      /* === VIEWPORT BASE STYLES === */
+      html, body {
+        height: 100%;
+        overflow-x: hidden;
+      }
+
+      html {
+        scroll-snap-type: y mandatory;
+        scroll-behavior: smooth;
+      }
+
+      .slide {
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        scroll-snap-align: start;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        background: var(--bg-primary);
+      }
+
+      .slide-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-height: 100%;
+        overflow: hidden;
+        padding: var(--slide-padding);
+      }
+
+      :root {
+        --title-size: clamp(1.5rem, 5vw, 4rem);
+        --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+        --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+        --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+        --small-size: clamp(0.65rem, 1vw, 0.875rem);
+        --slide-padding: clamp(1rem, 4vw, 4rem);
+        --content-gap: clamp(0.5rem, 2vw, 2rem);
+        --element-gap: clamp(0.25rem, 1vw, 1rem);
+      }
+
+      /* === ANIMATIONS === */
+      .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: opacity var(--duration-normal) var(--ease-out-expo),
+                    transform var(--duration-normal) var(--ease-out-expo);
+      }
+
+      .slide.visible .reveal {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .reveal:nth-child(1) { transition-delay: 0.1s; }
+      .reveal:nth-child(2) { transition-delay: 0.2s; }
+      .reveal:nth-child(3) { transition-delay: 0.3s; }
+      .reveal:nth-child(4) { transition-delay: 0.4s; }
+      .reveal:nth-child(5) { transition-delay: 0.5s; }
+      .reveal:nth-child(6) { transition-delay: 0.6s; }
+
+      /* === TERMINAL GREEN SPECIFIC STYLES === */
+      .terminal-bg {
+        background:
+          linear-gradient(rgba(57, 211, 83, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(57, 211, 83, 0.03) 1px, transparent 1px),
+          var(--bg-primary);
+        background-size: 50px 50px;
+      }
+
+      .scanline {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+        animation: scanline 4s linear infinite;
+        opacity: 0.5;
+      }
+
+      @keyframes scanline {
+        0% { top: 0; }
+        100% { top: 100%; }
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 10px;
+        height: 1.2em;
+        background: var(--accent);
+        margin-left: 4px;
+        animation: blink 1s step-end infinite;
+      }
+
+      @keyframes blink {
+        50% { opacity: 0; }
+      }
+
+      h1 {
+        font-family: var(--font-mono);
+        font-size: var(--title-size);
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1.2;
+      }
+
+      h2 {
+        font-family: var(--font-mono);
+        font-size: var(--h2-size);
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: var(--content-gap);
+      }
+
+      h3 {
+        font-family: var(--font-mono);
+        font-size: var(--h3-size);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: var(--element-gap);
+      }
+
+      p, li {
+        font-family: var(--font-mono);
+        font-size: var(--body-size);
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+
+      ul {
+        list-style: none;
+        padding-left: 0;
+      }
+
+      ul li {
+        position: relative;
+        padding-left: 1.5em;
+        margin-bottom: var(--element-gap);
+      }
+
+      ul li::before {
+        content: ">";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+        font-weight: bold;
+      }
+
+      .highlight {
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      code {
+        font-family: var(--font-mono);
+        font-size: var(--code-size);
+        background: var(--code-bg);
+        padding: 0.2em 0.4em;
+        border-radius: 4px;
+        color: var(--accent);
+        border: 1px solid var(--border-color);
+      }
+
+      .code-block {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: var(--element-gap);
+        margin: var(--element-gap) 0;
+        overflow-x: auto;
+        position: relative;
+      }
+
+      .code-block::before {
+        content: attr(data-lang);
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-size: var(--small-size);
+        color: var(--text-secondary);
+        text-transform: uppercase;
+      }
+
+      .code-block code {
+        background: none;
+        border: none;
+        padding: 0;
+        color: var(--text-primary);
+        display: block;
+        white-space: pre;
+      }
+
+      /* === LAYOUT UTILITIES === */
+      .text-center { text-align: center; }
+      .flex-center { display: flex; align-items: center; justify-content: center; }
+      .flex-col { flex-direction: column; }
+      .gap-sm { gap: var(--element-gap); }
+      .gap-md { gap: var(--content-gap); }
+
+      /* === TITLE SLIDE === */
+      .title-slide {
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .title-slide h1 {
+        font-size: clamp(2rem, 6vw, 4rem);
+        margin-bottom: var(--content-gap);
+      }
+
+      .title-slide .subtitle {
+        color: var(--text-secondary);
+        font-size: var(--h3-size);
+      }
+
+      .title-slide .chapter-badge {
+        display: inline-block;
+        background: var(--accent-dim);
+        color: var(--accent);
+        padding: 0.3em 0.8em;
+        border-radius: 4px;
+        font-size: var(--small-size);
+        margin-bottom: var(--content-gap);
+        border: 1px solid var(--accent);
+      }
+
+      /* === DIAGRAM === */
+      .diagram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(0.5rem, 2vw, 1.5rem);
+        flex-wrap: wrap;
+        margin: var(--content-gap) 0;
+      }
+
+      .diagram-box {
+        background: var(--bg-card);
+        border: 1px solid var(--accent);
+        border-radius: 8px;
+        padding: var(--element-gap) clamp(0.75rem, 2vw, 1.5rem);
+        text-align: center;
+        font-family: var(--font-mono);
+        color: var(--accent);
+        font-size: var(--body-size);
+        box-shadow: 0 0 20px var(--accent-dim);
+      }
+
+      .diagram-arrow {
+        color: var(--accent);
+        font-size: clamp(1rem, 2vw, 1.5rem);
+      }
+
+      .diagram-arrow-down {
+        display: block;
+        text-align: center;
+        font-size: clamp(1rem, 2vw, 1.5rem);
+        color: var(--accent);
+        margin: var(--element-gap) 0;
+      }
+
+      /* === CARDS === */
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+        gap: var(--content-gap);
+        margin-top: var(--content-gap);
+      }
+
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: var(--content-gap);
+      }
+
+      .card h3 {
+        color: var(--accent);
+        margin-bottom: var(--element-gap);
+      }
+
+      .card p {
+        font-size: var(--small-size);
+      }
+
+      /* === DATA FLOW === */
+      .data-flow {
+        display: flex;
+        flex-direction: column;
+        gap: var(--element-gap);
+      }
+
+      .flow-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--element-gap);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: var(--element-gap);
+      }
+
+      .flow-label {
+        background: var(--accent-dim);
+        color: var(--accent);
+        padding: 0.2em 0.6em;
+        border-radius: 4px;
+        font-size: var(--small-size);
+        font-family: var(--font-mono);
+        white-space: nowrap;
+      }
+
+      .flow-content {
+        flex: 1;
+        overflow-x: auto;
+      }
+
+      .flow-content code {
+        font-size: var(--code-size);
+      }
+
+      /* === RESPONSIVE === */
+      @media (max-height: 700px) {
+        :root {
+          --slide-padding: clamp(0.75rem, 3vw, 2rem);
+          --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+          --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+        }
+      }
+
+      @media (max-height: 600px) {
+        .nav-dots, .keyboard-hint, .decorative {
+          display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.2s !important;
+        }
+        html {
+          scroll-behavior: auto;
+        }
+      }
+
+      /* === NAVIGATION === */
+      .nav-dots {
+        position: fixed;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 100;
+      }
+
+      .nav-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        opacity: 0.3;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .nav-dot.active {
+        background: var(--accent);
+        opacity: 1;
+        box-shadow: 0 0 10px var(--accent-glow);
+      }
+
+      .nav-dot:hover {
+        opacity: 0.8;
+      }
+
+      .progress-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        background: var(--accent);
+        z-index: 101;
+        transition: width 0.3s ease;
+        box-shadow: 0 0 10px var(--accent-glow);
+      }
+
+      .keyboard-hint {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: var(--font-mono);
+        font-size: var(--small-size);
+        color: var(--text-secondary);
+        opacity: 0.5;
+      }
+
+      .keyboard-hint kbd {
+        background: var(--bg-card);
+        padding: 0.2em 0.5em;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+      }
+
+      /* === CALL TO ACTION === */
+      .cta-box {
+        background: var(--accent-dim);
+        border: 1px solid var(--accent);
+        border-radius: 8px;
+        padding: var(--content-gap);
+        text-align: center;
+        margin-top: var(--content-gap);
+      }
+
+      .cta-box h3 {
+        color: var(--accent);
+        margin-bottom: var(--element-gap);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="progress-bar" id="progressBar"></div>
+    <nav class="nav-dots" id="navDots"></nav>
+
+    <!-- Slide 1: Title -->
+    <section class="slide title-slide terminal-bg">
+      <div class="scanline"></div>
+      <div class="slide-content flex-center flex-col gap-md">
+        <span class="chapter-badge reveal">Chapter 01</span>
+        <h1 class="reveal">让LLM调用工具<span class="cursor"></span></h1>
+        <p class="subtitle reveal">Agent Loop的设计</p>
+      </div>
+    </section>
+
+    <!-- Slide 2: Problem Introduction -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">1. 问题引入</h2>
+        <p class="reveal">当我们让大语言模型（LLM）帮我们完成一个任务时，比如"读取当前目录下的所有文件"，会发生什么？</p>
+        <div class="card-grid reveal">
+          <div class="card">
+            <h3>LLM能做什么</h3>
+            <p>分析问题、理解意图、给出步骤指引</p>
+          </div>
+          <div class="card" style="border-color: #f85149;">
+            <h3 style="color: #f85149;">LLM不能做什么</h3>
+            <p>无法真正执行任何操作——不知道当前目录有什么文件</p>
+          </div>
+        </div>
+        <div class="cta-box reveal">
+          <p><span class="highlight">核心问题：</span>如何让LLM真正"动手"做事，而不是只给建议？</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 3: Solution -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">2. 解决方案</h2>
+        <p class="reveal" style="text-align: center; font-size: var(--h2-size); color: var(--accent); margin-bottom: var(--content-gap);">答案出乎意料地简单——<span class="highlight">用循环</span></p>
+        <div class="diagram reveal">
+          <div class="diagram-box">User<br/>prompt</div>
+          <span class="diagram-arrow">→</span>
+          <div class="diagram-box">LLM</div>
+          <span class="diagram-arrow">→</span>
+          <div class="diagram-box">Tool<br/>execute</div>
+        </div>
+        <span class="diagram-arrow-down">↓ tool_result ↑</span>
+        <p class="text-center reveal" style="color: var(--text-secondary);">(loop until stop)</p>
+      </div>
+    </section>
+
+    <!-- Slide 4: Loop Logic -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">循环逻辑</h2>
+        <ul>
+          <li class="reveal">用户提出请求</li>
+          <li class="reveal">LLM分析请求，决定是否需要调用工具</li>
+          <li class="reveal">如果需要，执行工具并获得结果</li>
+          <li class="reveal">把结果反馈给LLM，让它继续分析</li>
+          <li class="reveal">重复直到LLM认为任务完成</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Slide 5: Core Design -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">2.1 核心设计</h2>
+        <p class="reveal">整个循环依赖两个关键设计：</p>
+        <div class="card-grid reveal">
+          <div class="card">
+            <h3>stop_reason</h3>
+            <p>何时停止</p>
+          </div>
+          <div class="card">
+            <h3>tool_use 块</h3>
+            <p>传递什么任务</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 6: stop_reason -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">stop_reason —— 何时停止</h2>
+        <p class="reveal">LLM的回复中包含一个关键字段 <code>stop_reason</code>，它告诉程序LLM为什么停止生成：</p>
+        <ul style="margin-top: var(--content-gap);">
+          <li class="reveal"><code class="highlight">tool_use</code> — LLM想要调用工具，循环继续</li>
+          <li class="reveal"><code class="highlight">end_turn</code> — LLM认为任务完成，循环终止</li>
+          <li class="reveal"><code class="highlight">max_tokens</code> — 达到输出上限，可能是异常终止</li>
+        </ul>
+        <div class="code-block reveal" data-lang="python">
+          <code>if response.stop_reason != "tool_use":
+    return  # LLM说任务完成了，退出循环</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 7: tool_use block -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">tool_use 块 —— 传递什么任务</h2>
+        <p class="reveal">LLM的回复是一个内容块（block）列表，每个块可能是：</p>
+        <ul style="margin-top: var(--content-gap);">
+          <li class="reveal"><code class="highlight">text</code> — 纯文本回复</li>
+          <li class="reveal"><code class="highlight">tool_use</code> — 工具调用请求</li>
+        </ul>
+        <div class="code-block reveal" data-lang="python">
+          <code>for block in response.content:
+    if block.type == "tool_use":
+        tool_name = block.name
+        tool_input = block.input
+        tool_id = block.id</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 8: Data Flow -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">2.2 示例数据流转</h2>
+        <div class="data-flow">
+          <div class="flow-item reveal">
+            <span class="flow-label">用户请求</span>
+            <div class="flow-content">
+              <code>{"role": "user", "content": "List all Python files..."}</code>
+            </div>
+          </div>
+          <div class="flow-item reveal">
+            <span class="flow-label">LLM响应</span>
+            <div class="flow-content">
+              <code>{"stop_reason": "tool_use", "content": [{"type": "tool_use", "name": "bash", ...}]}</code>
+            </div>
+          </div>
+          <div class="flow-item reveal">
+            <span class="flow-label">工具执行结果</span>
+            <div class="flow-content">
+              <code>{"role": "user", "content": [{"type": "tool_result", "tool_use_id": "tool_123", ...}]}</code>
+            </div>
+          </div>
+          <div class="flow-item reveal">
+            <span class="flow-label">最终LLM响应</span>
+            <div class="flow-content">
+              <code>{"stop_reason": "end_turn", "content": [{"type": "text", "text": "完成!"}]}</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 9: Hands-on -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">3. 实战尝试</h2>
+        <p class="reveal">运行示例代码：</p>
+        <div class="code-block reveal" data-lang="bash">
+          <code>python agents/s01_agent_loop.py</code>
+        </div>
+        <p class="reveal" style="margin-top: var(--content-gap);">试试这些命令：</p>
+        <ul>
+          <li class="reveal">Create a file called hello.py that prints "Hello, World!"</li>
+          <li class="reveal">List all Python files in this directory</li>
+          <li class="reveal">What is the current git branch?</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Slide 10: End -->
+    <section class="slide title-slide terminal-bg">
+      <div class="scanline"></div>
+      <div class="slide-content flex-center flex-col gap-md">
+        <h1 class="reveal">Thanks<span class="cursor"></span></h1>
+        <p class="subtitle reveal">Chapter 01 - Agent Loop</p>
+      </div>
+    </section>
+
+    <script>
+      /* ===========================================
+         SLIDE PRESENTATION CONTROLLER
+         =========================================== */
+      class SlidePresentation {
+        constructor() {
+          this.slides = document.querySelectorAll(".slide");
+          this.currentSlide = 0;
+          this.navDotsContainer = document.getElementById("navDots");
+          this.progressBar = document.getElementById("progressBar");
+          this.setupIntersectionObserver();
+          this.setupKeyboardNav();
+          this.setupProgressBar();
+          this.setupNavDots();
+          this.init();
+        }
+
+        init() {
+          setTimeout(() => {
+            this.slides[0].classList.add("visible");
+          }, 100);
+        }
+
+        setupIntersectionObserver() {
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("visible");
+                const index = Array.from(this.slides).indexOf(entry.target);
+                this.currentSlide = index;
+                this.updateNavDots();
+                this.updateProgressBar();
+              }
+            });
+          }, { threshold: 0.5 });
+
+          this.slides.forEach(slide => observer.observe(slide));
+        }
+
+        setupKeyboardNav() {
+          document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+              e.preventDefault();
+              this.nextSlide();
+            } else if (e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "PageUp") {
+              e.preventDefault();
+              this.prevSlide();
+            }
+          });
+        }
+
+        nextSlide() {
+          if (this.currentSlide < this.slides.length - 1) {
+            this.currentSlide++;
+            this.scrollToSlide(this.currentSlide);
+          }
+        }
+
+        prevSlide() {
+          if (this.currentSlide > 0) {
+            this.currentSlide--;
+            this.scrollToSlide(this.currentSlide);
+          }
+        }
+
+        scrollToSlide(index) {
+          this.slides[index].scrollIntoView({ behavior: "smooth" });
+        }
+
+        setupProgressBar() {
+          this.updateProgressBar();
+        }
+
+        updateProgressBar() {
+          const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+          this.progressBar.style.width = progress + "%";
+        }
+
+        setupNavDots() {
+          this.navDotsContainer.innerHTML = "";
+          this.slides.forEach((_, index) => {
+            const dot = document.createElement("div");
+            dot.className = "nav-dot" + (index === 0 ? " active" : "");
+            dot.addEventListener("click", () => {
+              this.currentSlide = index;
+              this.scrollToSlide(index);
+              this.updateNavDots();
+            });
+            this.navDotsContainer.appendChild(dot);
+          });
+        }
+
+        updateNavDots() {
+          const dots = this.navDotsContainer.querySelectorAll(".nav-dot");
+          dots.forEach((dot, index) => {
+            dot.classList.toggle("active", index === this.currentSlide);
+          });
+        }
+      }
+
+      new SlidePresentation();
+    </script>
+  </body>
+</html>
