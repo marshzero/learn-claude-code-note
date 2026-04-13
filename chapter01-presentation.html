@@ -132,8 +132,8 @@
     .timeline-line { width: 2px; flex: 1; min-height: 30px; background: var(--green); opacity: 0.3; }
     .timeline-right { flex: 1; }
     .timeline-title { font: 600 0.9em var(--font); color: var(--green); margin-bottom: 0.3em; }
-    .timeline-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; }
-    .timeline-box pre { font-size: 0.75em; margin: 0; }
+    .timeline-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; overflow: hidden; }
+    .timeline-box pre { font-size: 0.7em; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-wrap: break-word; }
 
     /* === CARDS === */
     .card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
@@ -415,6 +415,7 @@ if response.stop_reason != "tool_use":
       <div class="timeline-item">
         <div class="timeline-left">
           <div class="timeline-dot" style="background: var(--orange);">4</div>
+          <div class="timeline-line"></div>
         </div>
         <div class="timeline-right">
           <div class="timeline-title">最终响应 (stop_reason="end_turn")</div>
