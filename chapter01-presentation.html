@@ -28,19 +28,17 @@
       overflow: hidden; scroll-snap-align: start;
       display: flex; flex-direction: column;
       position: relative; background: var(--bg);
-      padding: clamp(1rem, 4vw, 3rem);
+      padding: clamp(1.5rem, 4vw, 3rem);
     }
     h1 { font: 700 clamp(2rem, 6vw, 4rem) var(--font); color: var(--text); line-height: 1.2; }
     h2 { font: 600 clamp(1.3rem, 3vw, 2rem) var(--font); color: var(--green); margin-bottom: 1rem; }
-    p, li { font: 400 clamp(0.8rem, 1.5vw, 1rem) var(--font); color: var(--text2); line-height: 1.6; }
+    p { font: 400 clamp(0.85rem, 1.5vw, 1rem) var(--font); color: var(--text2); line-height: 1.6; }
     ul { list-style: none; }
-    ul li { padding-left: 1.2em; position: relative; margin-bottom: 0.5em; }
+    ul li { padding-left: 1.2em; position: relative; margin-bottom: 0.5em; font: 400 clamp(0.85rem, 1.5vw, 1rem) var(--font); color: var(--text2); }
     ul li::before { content: ">"; position: absolute; left: 0; color: var(--green); }
     code { font: 400 0.9em var(--font); background: var(--bg2); padding: 0.15em 0.4em; border-radius: 4px; color: var(--green); border: 1px solid var(--border); }
     pre { font: 400 0.8em var(--font); background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1em; overflow-x: auto; white-space: pre-wrap; word-break: break-all; line-height: 1.5; color: var(--text); }
-    .grid-bg {
-      background: #0d1117;
-    }
+    .grid-bg { background: var(--bg); }
     .center { display: flex; align-items: center; justify-content: center; }
     .col { display: flex; flex-direction: column; }
     .gap1 { gap: 0.5rem; }
@@ -48,172 +46,85 @@
     .gap3 { gap: 1.5rem; }
 
     /* === FLOW DIAGRAM === */
-    .loop-diagram {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.5rem;
-      padding: 2rem;
-    }
-    .loop-row {
-      display: flex;
-      align-items: center;
-      gap: clamp(1rem, 3vw, 2rem);
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .loop-box {
+    .flow-center { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .flow-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .flow-box {
       background: var(--bg3);
       border: 2px solid var(--green);
       border-radius: 12px;
-      padding: clamp(0.6rem, 2vw, 1.2rem) clamp(1rem, 3vw, 2rem);
+      padding: 0.8rem 1.5rem;
       text-align: center;
-      min-width: 100px;
     }
-    .loop-box .icon { font-size: clamp(1.5rem, 3vw, 2.5rem); }
-    .loop-box .label { font: 600 0.9em var(--font); color: var(--green); margin-top: 0.3em; }
-    .loop-box .sub { font: 400 0.7em var(--font); color: var(--text2); margin-top: 0.2em; }
-    .loop-arrow { font-size: clamp(1.2rem, 2.5vw, 2rem); color: var(--green); }
-    .loop-arrow-down { font-size: clamp(1.5rem, 3vw, 2.5rem); color: var(--green); margin: 0.5rem 0; }
-    .loop-back {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--green);
-      font: 400 0.8em var(--font);
-    }
-    .loop-back::before {
-      content: "";
-      position: absolute;
-      top: -20px;
-      left: 50%;
-      width: 2px;
-      height: 20px;
-      background: var(--green);
-    }
-    .loop-label {
+    .flow-box-blue { border-color: var(--blue); }
+    .flow-box-orange { border-color: var(--orange); }
+    .flow-icon { font-size: 1.8rem; }
+    .flow-label { font: 600 0.9em var(--font); color: var(--green); margin-top: 0.3em; }
+    .flow-label-blue { color: var(--blue); }
+    .flow-label-orange { color: var(--orange); }
+    .flow-sub { font: 400 0.7em var(--font); color: var(--text2); margin-top: 0.2em; }
+    .flow-arrow { font-size: 1.5rem; color: var(--green); }
+    .flow-arrow-down { font-size: 2rem; color: var(--green); }
+    .flow-loop {
+      display: flex; align-items: center; gap: 0.5rem;
       background: var(--green-dim);
       border: 1px solid var(--green);
-      border-radius: 4px;
-      padding: 0.2em 0.6em;
-      font: 500 0.75em var(--font);
-      color: var(--green);
+      border-radius: 6px;
+      padding: 0.3em 0.8em;
+      font: 500 0.8em var(--font); color: var(--green);
     }
 
-    /* === TIMELINE === */
-    .timeline {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      max-width: 900px;
+    /* === WHILE LOOP DIAGRAM === */
+    .while-box {
+      background: var(--bg3);
+      border: 2px solid var(--blue);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      max-width: 400px;
       margin: 0 auto;
     }
-    .timeline-item {
-      display: flex;
-      gap: 1rem;
-      align-items: flex-start;
-    }
-    .timeline-left {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 80px;
-    }
-    .timeline-dot {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      background: var(--green);
-      color: var(--bg);
-      display: flex; align-items: center; justify-content: center;
-      font: 700 0.9em var(--font);
-    }
-    .timeline-line { width: 2px; flex: 1; min-height: 30px; background: var(--green); opacity: 0.3; }
-    .timeline-right { flex: 1; }
-    .timeline-title { font: 600 0.9em var(--font); color: var(--green); margin-bottom: 0.3em; }
-    .timeline-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; overflow: hidden; }
-    .timeline-box pre { font-size: 0.7em; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-wrap: break-word; }
+    .while-title { font: 700 1.1em var(--font); color: var(--blue); margin-bottom: 0.5em; }
+    .while-code { font: 400 0.9em var(--font); color: var(--text); text-align: left; }
+    .while-code .kw { color: var(--blue); }
+    .while-code .var { color: var(--orange); }
+    .while-code .str { color: var(--green); }
 
-    /* === CARDS === */
-    .card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
-    .card h3 { font: 600 1em var(--font); color: var(--green); margin-bottom: 0.5em; }
-    .card p { font-size: 0.85em; }
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    /* === CODE BLOCKS === */
+    .code-section { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
+    .code-title { font: 600 0.85em var(--font); color: var(--green); margin-bottom: 0.5em; }
+
+    /* === MESSAGES ARRAY === */
+    .msg-array { display: flex; flex-direction: column; gap: 0.5rem; max-width: 700px; margin: 0 auto; }
+    .msg-item {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8rem;
+    }
+    .msg-role {
+      background: var(--green-dim);
+      color: var(--green);
+      padding: 0.2em 0.5em;
+      border-radius: 4px;
+      font: 600 0.7em var(--font);
+      white-space: nowrap;
+    }
+    .msg-role-user { background: rgba(88, 166, 255, 0.15); color: var(--blue); }
+    .msg-role-ai { background: var(--green-dim); color: var(--green); }
+    .msg-role-system { background: rgba(255, 166, 87, 0.15); color: var(--orange); }
+    .msg-content { font: 400 0.75em var(--font); color: var(--text); flex: 1; overflow-x: auto; }
 
     /* === BADGE === */
-    .badge {
-      display: inline-block;
-      background: var(--green-dim);
-      border: 1px solid var(--green);
-      color: var(--green);
-      padding: 0.3em 0.8em;
-      border-radius: 4px;
-      font: 500 0.8em var(--font);
-      margin-bottom: 1rem;
-    }
+    .badge { display: inline-block; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); padding: 0.3em 0.8em; border-radius: 4px; font: 500 0.8em var(--font); margin-bottom: 1rem; }
 
     /* === CALLOUT === */
-    .callout {
-      background: var(--green-dim);
-      border-left: 4px solid var(--green);
-      padding: 0.8rem 1rem;
-      border-radius: 0 8px 8px 0;
-      margin-top: 1rem;
-    }
+    .callout { background: var(--green-dim); border-left: 4px solid var(--green); padding: 0.8rem 1rem; border-radius: 0 8px 8px 0; margin-top: 1rem; }
     .callout p { color: var(--text); }
-
-    /* === HORIZONTAL DATA FLOW === */
-    .data-flow-horizontal {
-      display: flex;
-      align-items: stretch;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .data-flow-step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      min-width: 120px;
-      max-width: 160px;
-      flex: 1;
-    }
-    .data-flow-num {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      background: var(--green);
-      color: var(--bg);
-      display: flex; align-items: center; justify-content: center;
-      font: 700 0.9em var(--font);
-    }
-    .data-flow-box {
-      background: var(--bg3);
-      border: 2px solid var(--green);
-      border-radius: 8px;
-      padding: 0.8rem;
-      text-align: center;
-      width: 100%;
-    }
-    .data-flow-title {
-      font: 600 0.75em var(--font);
-      color: var(--green);
-      margin-bottom: 0.5em;
-    }
-    .data-flow-content {
-      font: 400 0.65em var(--font);
-      color: var(--text);
-      text-align: left;
-      line-height: 1.4;
-    }
-    .data-flow-arrow {
-      display: flex;
-      align-items: center;
-      font-size: 1.5rem;
-      color: var(--green);
-      align-self: center;
-    }
+    .callout-center { background: var(--green-dim); border: 1px solid var(--green); border-radius: 8px; padding: 1rem; text-align: center; margin-top: 1rem; }
+    .callout-center p { color: var(--text); }
 
     /* === NAV === */
     .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--green); z-index: 101; transition: width 0.3s; }
@@ -229,11 +140,7 @@
     .visible .reveal:nth-child(4) { transition-delay: 0.3s; }
     .visible .reveal:nth-child(5) { transition-delay: 0.4s; }
     .visible .reveal:nth-child(6) { transition-delay: 0.5s; }
-
-    @media (max-width: 768px) {
-      .timeline-item { flex-direction: column; }
-      .timeline-left { flex-direction: row; }
-    }
+    .visible .reveal:nth-child(7) { transition-delay: 0.6s; }
   </style>
 </head>
 <body>
@@ -252,21 +159,17 @@
   <!-- SLIDE 2: 问题 -->
   <section class="slide grid-bg">
     <h2 class="reveal">问题：LLM只能给建议，不能执行</h2>
-    <div class="card-grid reveal">
-      <div class="card">
-        <h3>LLM 能做什么</h3>
-        <p>分析问题、理解意图、给出步骤指引</p>
-      </div>
-      <div class="card" style="border-color: var(--red);">
-        <h3 style="color: var(--red);">LLM 不能做什么</h3>
-        <p>无法真正执行任何操作——不知道当前目录有什么文件</p>
-      </div>
-    </div>
+    <p class="reveal">当我们让LLM"读取当前目录下的所有文件"时：</p>
+    <ul class="reveal">
+      <li>LLM可以分析这个问题</li>
+      <li>但它<strong style="color: var(--red);">无法真正执行</strong>任何操作</li>
+      <li>它不知道当前目录有什么文件</li>
+    </ul>
     <div class="callout reveal">
       <p><strong>传统方案：</strong>LLM给出步骤指引，用户手动执行，再把结果粘贴回给LLM。中间的"翻译"工作全部由人完成，LLM只是一个"顾问"。</p>
     </div>
-    <div class="callout reveal" style="background: rgba(255,166,87,0.15); border-color: var(--orange);">
-      <p style="color: var(--orange);"><strong>核心问题：</strong>如何让LLM真正"动手"做事，而不是只给建议？</p>
+    <div class="callout-center reveal" style="background: rgba(255,166,87,0.15); border-color: var(--orange);">
+      <p style="font-size: 1.1em;"><strong style="color: var(--orange);">核心问题：</strong>如何让LLM真正"动手"做事？</p>
     </div>
   </section>
 
@@ -274,199 +177,174 @@
   <section class="slide grid-bg center">
     <div class="col center gap2">
       <h2 class="reveal">解决方案：用循环</h2>
-      <p class="reveal" style="font-size: 1.1em;">答案出乎意料地简单</p>
+      <p class="reveal" style="font-size: 1.1em; color: var(--text);">答案出乎意料地简单</p>
     </div>
   </section>
 
-  <!-- SLIDE 4: Agent Loop 流程图 -->
+  <!-- SLIDE 4: 循环流程 -->
   <section class="slide grid-bg">
-    <h2 class="reveal">Agent Loop 完整流程</h2>
-    <div class="loop-diagram reveal">
-      <!-- 第一行 -->
-      <div class="loop-row">
-        <div class="loop-box">
-          <div class="icon">👤</div>
-          <div class="label">User</div>
-          <div class="sub">提出请求</div>
+    <h2 class="reveal">Agent Loop 是怎么跑的？</h2>
+    <div class="flow-center reveal">
+      <div class="flow-row">
+        <div class="flow-box">
+          <div class="flow-icon">👤</div>
+          <div class="flow-label">User</div>
+          <div class="flow-sub">提出请求</div>
         </div>
-        <div class="loop-arrow">→</div>
-        <div class="loop-box" style="border-color: var(--blue);">
-          <div class="icon">🧠</div>
-          <div class="label" style="color: var(--blue);">LLM</div>
-          <div class="sub">分析 + 决策</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box flow-box-blue">
+          <div class="flow-icon">🧠</div>
+          <div class="flow-label flow-label-blue">LLM</div>
+          <div class="flow-sub">决定调用工具？</div>
         </div>
-        <div class="loop-arrow">→</div>
-        <div class="loop-box">
-          <div class="icon">⚙️</div>
-          <div class="label">Tool</div>
-          <div class="sub">执行操作</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">
+          <div class="flow-icon">⚙️</div>
+          <div class="flow-label">Tool</div>
+          <div class="flow-sub">执行操作</div>
         </div>
       </div>
 
-      <!-- 回环箭头 -->
-      <div class="loop-back">
-        <div class="loop-label">tool_result</div>
-        <div class="loop-arrow-down">↺</div>
-        <div class="loop-label">循环</div>
+      <div class="flow-arrow-down">↓</div>
+
+      <div class="flow-loop">
+        <span>tool_result</span>
+        <span style="color: var(--text2);">反馈给LLM</span>
       </div>
 
-      <!-- 停止条件 -->
-      <div class="loop-row" style="margin-top: 1rem;">
-        <div class="loop-box" style="border-color: var(--orange);">
-          <div class="icon">🛑</div>
-          <div class="label" style="color: var(--orange);">stop_reason</div>
-          <div class="sub">控制循环退出</div>
-        </div>
-      </div>
-    </div>
-    <div class="callout reveal" style="text-align: center;">
-      <p>循环直到 <code>stop_reason != "tool_use"</code> 时退出</p>
+      <div class="flow-arrow-down">↻</div>
+      <p style="color: var(--text);">继续下一轮...</p>
     </div>
   </section>
 
-  <!-- SLIDE 5: 循环逻辑 -->
-  <section class="slide grid-bg">
-    <h2 class="reveal">循环逻辑</h2>
-    <ol style="counter-reset: step; padding-left: 2rem;" class="reveal">
-      <li style="padding-left: 1em; margin-bottom: 0.8em;"><strong>用户</strong>提出请求</li>
-      <li style="padding-left: 1em; margin-bottom: 0.8em;"><strong>LLM</strong>分析请求，决定是否需要调用工具</li>
-      <li style="padding-left: 1em; margin-bottom: 0.8em;">如果需要，<strong>执行工具</strong>并获得结果</li>
-      <li style="padding-left: 1em; margin-bottom: 0.8em;">把结果反馈给<strong>LLM</strong>，让它继续分析</li>
-      <li style="padding-left: 1em; margin-bottom: 0.8em;">重复直到LLM认为任务<strong>完成</strong></li>
-    </ol>
-  </section>
-
-  <!-- SLIDE 6: 核心设计 -->
+  <!-- SLIDE 5: 核心：while循环 -->
   <section class="slide grid-bg center">
-    <h2 class="reveal">核心设计：两个关键字段</h2>
-    <div class="card-grid reveal" style="max-width: 800px; margin-top: 1rem;">
-      <div class="card" style="text-align: center;">
-        <h3>stop_reason</h3>
-        <p>何时停止循环？</p>
-        <div style="margin-top: 0.5em; font-size: 0.8em;">
-          <code>tool_use</code> → 继续<br/>
-          <code>end_turn</code> → 终止<br/>
-          <code>max_tokens</code> → 异常
-        </div>
+    <h2 class="reveal">核心：while循环</h2>
+    <div class="while-box reveal">
+      <div class="while-title">while stop_reason == "tool_use":</div>
+      <div class="while-code">
+        <span class="kw">response</span> = llm.call(messages)<br/><br/>
+        <span class="kw">if</span> <span class="var">response.stop_reason</span> != <span class="str">"tool_use"</span>:<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">break</span>&nbsp;&nbsp;<span style="color: var(--text2);"># 停止</span><br/><br/>
+        execute_tools(response)<br/>
+        messages.append(tool_result)
       </div>
-      <div class="card" style="text-align: center;">
-        <h3>tool_use 块</h3>
-        <p>传递什么任务？</p>
-        <div style="margin-top: 0.5em; font-size: 0.8em;">
-          <code>name</code> 工具名<br/>
-          <code>input</code> 参数<br/>
-          <code>id</code> 调用ID
-        </div>
-      </div>
+    </div>
+    <div class="callout-center reveal">
+      <p><code>stop_reason</code> 决定是否继续循环</p>
     </div>
   </section>
 
-  <!-- SLIDE 7: stop_reason详解 -->
+  <!-- SLIDE 6: stop_reason -->
   <section class="slide grid-bg">
-    <h2 class="reveal">stop_reason — 何时停止</h2>
-    <pre class="reveal" style="max-width: 600px; margin: 0 auto;"><code>response = client.messages.create(
-    model=MODEL, messages=messages, tools=TOOLS
-)
-
-if response.stop_reason != "tool_use":
-    return  # LLM说任务完成了，退出循环</code></pre>
-    <div class="card-grid reveal" style="margin-top: 1.5rem; max-width: 700px; margin-left: auto; margin-right: auto;">
-      <div class="card" style="border-color: var(--blue);">
-        <h3 style="color: var(--blue);">tool_use</h3>
-        <p>LLM想要调用工具，循环继续</p>
+    <h2 class="reveal">stop_reason：循环的开关</h2>
+    <div class="flow-row reveal" style="margin: 1.5rem 0; gap: 2rem;">
+      <div class="flow-box flow-box-blue" style="border-color: var(--blue);">
+        <div class="flow-label flow-label-blue">tool_use</div>
+        <div class="flow-sub">LLM想调用工具 → 继续循环</div>
       </div>
-      <div class="card" style="border-color: var(--green);">
-        <h3 style="color: var(--green);">end_turn</h3>
-        <p>LLM认为任务完成，循环终止</p>
+      <div class="flow-box" style="border-color: var(--green);">
+        <div class="flow-label" style="color: var(--green);">end_turn</div>
+        <div class="flow-sub">任务完成 → 退出循环</div>
       </div>
-      <div class="card" style="border-color: var(--red);">
-        <h3 style="color: var(--red);">max_tokens</h3>
-        <p>达到输出上限，可能是异常终止</p>
+      <div class="flow-box" style="border-color: var(--red);">
+        <div class="flow-label" style="color: var(--red);">max_tokens</div>
+        <div class="flow-sub">输出超限 → 异常退出</div>
       </div>
+    </div>
+    <div class="code-section reveal">
+      <div class="code-title">判断逻辑</div>
+      <pre><code>if response.stop_reason != "tool_use":
+    return  # 退出循环</code></pre>
     </div>
   </section>
 
-  <!-- SLIDE 8: tool_use块详解 -->
+  <!-- SLIDE 7: tool_use块 -->
   <section class="slide grid-bg">
-    <h2 class="reveal">tool_use 块 — 传递什么任务</h2>
-    <p class="reveal">LLM的回复是一个内容块列表，每个块可能是：</p>
-    <div class="card-grid reveal" style="max-width: 600px; margin: 1rem auto;">
-      <div class="card" style="text-align: center;">
-        <h3>text</h3>
-        <p>纯文本回复</p>
-      </div>
-      <div class="card" style="text-align: center;">
-        <h3>tool_use</h3>
-        <p>工具调用请求</p>
-      </div>
-    </div>
-    <pre class="reveal" style="max-width: 600px;"><code>for block in response.content:
+    <h2 class="reveal">tool_use 块：传递任务给工具</h2>
+    <p class="reveal">LLM的回复是一个内容块列表，每个块可能是 <code>text</code> 或 <code>tool_use</code></p>
+    <div class="code-section reveal">
+      <div class="code-title">解析 tool_use 块</div>
+      <pre><code>for block in response.content:
     if block.type == "tool_use":
-        tool_name = block.name
-        tool_input = block.input
-        tool_id = block.id</code></pre>
+        tool_name = block.name      # 工具名
+        tool_input = block.input   # 参数
+        tool_id = block.id          # 调用ID</code></pre>
+    </div>
   </section>
 
-<!-- SLIDE 9: 完整数据流转 -->
+  <!-- SLIDE 8: messages数组增长 -->
   <section class="slide grid-bg">
-    <h2 class="reveal">完整示例：列出Python文件</h2>
-
-    <div class="data-flow-horizontal reveal" style="margin-top: 1.5rem;">
-      <!-- Step 1 -->
-      <div class="data-flow-step">
-        <div class="data-flow-num">1</div>
-        <div class="data-flow-box">
-          <div class="data-flow-title">用户请求</div>
-          <div class="data-flow-content">role: "user"</div>
-          <div class="data-flow-content">content: "List all<br/>Python files"</div>
-        </div>
+    <h2 class="reveal">messages 数组是怎么增长的？</h2>
+    <p class="reveal">每轮循环后，messages数组都会追加新的内容</p>
+    <div class="msg-array reveal">
+      <div class="msg-item">
+        <span class="msg-role msg-role-system">system</span>
+        <span class="msg-content">You are a helpful assistant. Tools: bash, read, write...</span>
       </div>
-
-      <div class="data-flow-arrow">→</div>
-
-      <!-- Step 2 -->
-      <div class="data-flow-step">
-        <div class="data-flow-num" style="background: var(--blue);">2</div>
-        <div class="data-flow-box" style="border-color: var(--blue);">
-          <div class="data-flow-title">LLM响应</div>
-          <div class="data-flow-content" style="color: var(--blue);">stop_reason:<br/>"tool_use"</div>
-          <div class="data-flow-content">type: "tool_use"<br/>name: "bash"<br/>id: "tool_123"</div>
-        </div>
+      <div class="msg-item">
+        <span class="msg-role msg-role-user">user</span>
+        <span class="msg-content">List all Python files</span>
       </div>
-
-      <div class="data-flow-arrow">→</div>
-
-      <!-- Step 3 -->
-      <div class="data-flow-step">
-        <div class="data-flow-num">3</div>
-        <div class="data-flow-box">
-          <div class="data-flow-title">tool_result</div>
-          <div class="data-flow-content">type: "tool_result"<br/>tool_use_id: "tool_123"<br/>content: "hello.py<br/>greet.py<br/>main.py"</div>
-        </div>
+      <div class="msg-item">
+        <span class="msg-role msg-role-ai">assistant</span>
+        <span class="msg-content">stop_reason: "tool_use" → {type: "tool_use", name: "bash", ...}</span>
       </div>
-
-      <div class="data-flow-arrow">→</div>
-
-      <!-- Step 4 -->
-      <div class="data-flow-step">
-        <div class="data-flow-num" style="background: var(--orange);">4</div>
-        <div class="data-flow-box" style="border-color: var(--orange);">
-          <div class="data-flow-title">最终响应</div>
-          <div class="data-flow-content" style="color: var(--orange);">stop_reason:<br/>"end_turn"</div>
-          <div class="data-flow-content">type: "text"<br/>text: "3个Python文件"</div>
-        </div>
+      <div class="msg-item">
+        <span class="msg-role msg-role-user">user</span>
+        <span class="msg-content">tool_result: "hello.py\ngreet.py\nmain.py"</span>
+      </div>
+      <div class="msg-item">
+        <span class="msg-role msg-role-ai">assistant</span>
+        <span class="msg-content">stop_reason: "end_turn" → "目录下有3个Python文件"</span>
       </div>
     </div>
+    <div class="callout reveal">
+      <p>messages数组记录了完整的对话历史，每一轮的请求和响应都被追加进去。</p>
+    </div>
+  </section>
 
-    <div class="callout reveal" style="margin-top: 2rem; text-align: center;">
-      <p>循环直到 <code>stop_reason == "end_turn"</code> 时终止</p>
+  <!-- SLIDE 9: 完整闭环 -->
+  <section class="slide grid-bg center">
+    <h2 class="reveal">完整的闭环</h2>
+    <div class="flow-center reveal">
+      <div class="flow-row">
+        <div class="flow-box" style="min-width: 140px;">
+          <div class="flow-label">1. 发请求</div>
+          <div class="flow-sub">messages.append(user)</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box flow-box-blue" style="min-width: 140px;">
+          <div class="flow-label flow-label-blue">2. LLM思考</div>
+          <div class="flow-sub">stop_reason?</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box" style="min-width: 140px;">
+          <div class="flow-label">3. 执行工具</div>
+          <div class="flow-sub">返回tool_result</div>
+        </div>
+      </div>
+
+      <div class="flow-arrow-down">↓</div>
+
+      <div class="flow-loop">
+        <span>messages.append(tool_result)</span>
+      </div>
+
+      <div class="flow-arrow-down">↻</div>
+
+      <p style="color: var(--green); margin-top: 0.5rem;">继续下一轮...</p>
+
+      <div style="margin-top: 1rem; padding: 1rem; background: var(--bg3); border-radius: 8px; border: 1px solid var(--green);">
+        <p style="color: var(--green);">直到 <code>stop_reason != "tool_use"</code></p>
+      </div>
     </div>
   </section>
 
   <!-- SLIDE 10: 实战 -->
   <section class="slide grid-bg">
     <h2 class="reveal">实战尝试</h2>
-    <pre class="reveal" style="max-width: 500px;"><code>python agents/s01_agent_loop.py</code></pre>
+    <pre class="reveal"><code>python agents/s01_agent_loop.py</code></pre>
     <p class="reveal" style="margin-top: 1rem;">试试这些命令：</p>
     <ul class="reveal">
       <li>Create a file called hello.py that prints "Hello, World!"</li>
