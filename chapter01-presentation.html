@@ -3,13 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>第一章：让LLM调用工具——Agent Loop的设计</title>
+    <title>第一章：Agent Loop - 让LLM调用工具</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" />
     <style>
-      /* ===========================================
-         CSS CUSTOM PROPERTIES (THEME)
-         Terminal Green - Developer-focused, hacker aesthetic
-         =========================================== */
       :root {
         --bg-primary: #0d1117;
         --bg-secondary: #161b22;
@@ -21,570 +17,251 @@
         --accent-glow: rgba(57, 211, 83, 0.4);
         --code-bg: #0d1117;
         --border-color: #30363d;
-
         --font-mono: "JetBrains Mono", monospace;
-        --title-size: clamp(1.75rem, 5vw, 3.5rem);
-        --h2-size: clamp(1.25rem, 3vw, 2rem);
+        --title-size: clamp(2rem, 6vw, 4rem);
+        --h2-size: clamp(1.5rem, 4vw, 2.5rem);
         --h3-size: clamp(1rem, 2vw, 1.5rem);
-        --body-size: clamp(0.75rem, 1.5vw, 1.1rem);
-        --code-size: clamp(0.65rem, 1.2vw, 0.9rem);
-
+        --body-size: clamp(0.8rem, 1.5vw, 1.1rem);
+        --code-size: clamp(0.65rem, 1.2vw, 0.85rem);
         --slide-padding: clamp(1.5rem, 4vw, 4rem);
-        --content-gap: clamp(0.75rem, 2vw, 1.5rem);
+        --content-gap: clamp(1rem, 2vw, 2rem);
         --element-gap: clamp(0.5rem, 1vw, 1rem);
-
         --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
         --duration-normal: 0.6s;
       }
-
-      /* ===========================================
-         BASE STYLES
-         =========================================== */
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      /* === VIEWPORT BASE STYLES === */
-      html, body {
-        height: 100%;
-        overflow-x: hidden;
-      }
-
-      html {
-        scroll-snap-type: y mandatory;
-        scroll-behavior: smooth;
-      }
-
-      .slide {
-        width: 100vw;
-        height: 100vh;
-        height: 100dvh;
-        overflow: hidden;
-        scroll-snap-align: start;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        background: var(--bg-primary);
-      }
-
-      .slide-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        max-height: 100%;
-        overflow: hidden;
-        padding: var(--slide-padding);
-      }
-
-      :root {
-        --title-size: clamp(1.5rem, 5vw, 4rem);
-        --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
-        --h3-size: clamp(1rem, 2.5vw, 1.75rem);
-        --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
-        --small-size: clamp(0.65rem, 1vw, 0.875rem);
-        --slide-padding: clamp(1rem, 4vw, 4rem);
-        --content-gap: clamp(0.5rem, 2vw, 2rem);
-        --element-gap: clamp(0.25rem, 1vw, 1rem);
-      }
-
-      /* === ANIMATIONS === */
-      .reveal {
-        opacity: 0;
-        transform: translateY(30px);
-        transition: opacity var(--duration-normal) var(--ease-out-expo),
-                    transform var(--duration-normal) var(--ease-out-expo);
-      }
-
-      .slide.visible .reveal {
-        opacity: 1;
-        transform: translateY(0);
-      }
-
-      .reveal:nth-child(1) { transition-delay: 0.1s; }
-      .reveal:nth-child(2) { transition-delay: 0.2s; }
-      .reveal:nth-child(3) { transition-delay: 0.3s; }
-      .reveal:nth-child(4) { transition-delay: 0.4s; }
-      .reveal:nth-child(5) { transition-delay: 0.5s; }
-      .reveal:nth-child(6) { transition-delay: 0.6s; }
-
-      /* === TERMINAL GREEN SPECIFIC STYLES === */
-      .terminal-bg {
-        background:
-          linear-gradient(rgba(57, 211, 83, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(57, 211, 83, 0.03) 1px, transparent 1px),
-          var(--bg-primary);
-        background-size: 50px 50px;
-      }
-
-      .scanline {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
-        animation: scanline 4s linear infinite;
-        opacity: 0.5;
-      }
-
-      @keyframes scanline {
-        0% { top: 0; }
-        100% { top: 100%; }
-      }
-
-      .cursor {
-        display: inline-block;
-        width: 10px;
-        height: 1.2em;
-        background: var(--accent);
-        margin-left: 4px;
-        animation: blink 1s step-end infinite;
-      }
-
-      @keyframes blink {
-        50% { opacity: 0; }
-      }
-
-      h1 {
-        font-family: var(--font-mono);
-        font-size: var(--title-size);
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1.2;
-      }
-
-      h2 {
-        font-family: var(--font-mono);
-        font-size: var(--h2-size);
-        font-weight: 600;
-        color: var(--accent);
-        margin-bottom: var(--content-gap);
-      }
-
-      h3 {
-        font-family: var(--font-mono);
-        font-size: var(--h3-size);
-        font-weight: 500;
-        color: var(--text-primary);
-        margin-bottom: var(--element-gap);
-      }
-
-      p, li {
-        font-family: var(--font-mono);
-        font-size: var(--body-size);
-        color: var(--text-secondary);
-        line-height: 1.6;
-      }
-
-      ul {
-        list-style: none;
-        padding-left: 0;
-      }
-
-      ul li {
-        position: relative;
-        padding-left: 1.5em;
-        margin-bottom: var(--element-gap);
-      }
-
-      ul li::before {
-        content: ">";
-        position: absolute;
-        left: 0;
-        color: var(--accent);
-        font-weight: bold;
-      }
-
-      .highlight {
-        color: var(--accent);
-        font-weight: 500;
-      }
-
-      code {
-        font-family: var(--font-mono);
-        font-size: var(--code-size);
-        background: var(--code-bg);
-        padding: 0.2em 0.4em;
-        border-radius: 4px;
-        color: var(--accent);
-        border: 1px solid var(--border-color);
-      }
-
-      .code-block {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: var(--element-gap);
-        margin: var(--element-gap) 0;
-        overflow-x: auto;
-        position: relative;
-      }
-
-      .code-block::before {
-        content: attr(data-lang);
-        position: absolute;
-        top: 8px;
-        right: 12px;
-        font-size: var(--small-size);
-        color: var(--text-secondary);
-        text-transform: uppercase;
-      }
-
-      .code-block code {
-        background: none;
-        border: none;
-        padding: 0;
-        color: var(--text-primary);
-        display: block;
-        white-space: pre;
-      }
-
-      /* === LAYOUT UTILITIES === */
-      .text-center { text-align: center; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { height: 100%; overflow-x: hidden; }
+      html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+      .slide { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; scroll-snap-align: start; display: flex; flex-direction: column; position: relative; background: var(--bg-primary); }
+      .slide-content { flex: 1; display: flex; flex-direction: column; justify-content: center; max-height: 100%; overflow: hidden; padding: var(--slide-padding); }
+      .reveal { opacity: 0; transform: translateY(30px); transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo); }
+      .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+      .slide.visible .reveal-delay-1 { transition-delay: 0.15s; }
+      .slide.visible .reveal-delay-2 { transition-delay: 0.3s; }
+      .slide.visible .reveal-delay-3 { transition-delay: 0.45s; }
+      .slide.visible .reveal-delay-4 { transition-delay: 0.6s; }
+      .terminal-bg { background: linear-gradient(rgba(57, 211, 83, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(57, 211, 83, 0.03) 1px, transparent 1px), var(--bg-primary); background-size: 50px 50px; }
+      h1 { font-family: var(--font-mono); font-size: var(--title-size); font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+      h2 { font-family: var(--font-mono); font-size: var(--h2-size); font-weight: 600; color: var(--accent); margin-bottom: var(--content-gap); }
+      h3 { font-family: var(--font-mono); font-size: var(--h3-size); font-weight: 500; color: var(--text-primary); margin-bottom: var(--element-gap); }
+      p, li { font-family: var(--font-mono); font-size: var(--body-size); color: var(--text-secondary); line-height: 1.6; }
+      ul { list-style: none; padding-left: 0; }
+      ul li { position: relative; padding-left: 1.5em; margin-bottom: var(--element-gap); }
+      ul li::before { content: ">"; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
+      .highlight { color: var(--accent); font-weight: 500; }
+      code { font-family: var(--font-mono); font-size: var(--code-size); background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; color: var(--accent); border: 1px solid var(--border-color); }
+      .code-block { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: var(--element-gap); margin: var(--element-gap) 0; overflow-x: auto; max-height: 70vh; }
+      .code-block code { background: none; border: none; padding: 0; color: var(--text-primary); display: block; white-space: pre; font-size: var(--code-size); line-height: 1.5; }
       .flex-center { display: flex; align-items: center; justify-content: center; }
       .flex-col { flex-direction: column; }
       .gap-sm { gap: var(--element-gap); }
       .gap-md { gap: var(--content-gap); }
+      .title-slide { justify-content: center; align-items: center; text-align: center; }
+      .title-slide h1 { font-size: clamp(2.5rem, 7vw, 5rem); margin-bottom: var(--content-gap); }
+      .title-slide .subtitle { color: var(--text-secondary); font-size: var(--h2-size); }
+      .title-slide .chapter-badge { display: inline-block; background: var(--accent-dim); color: var(--accent); padding: 0.4em 1em; border-radius: 4px; font-size: var(--body-size); margin-bottom: var(--content-gap); border: 1px solid var(--accent); }
 
-      /* === TITLE SLIDE === */
-      .title-slide {
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-      }
+      /* ===== FLOW DIAGRAM STYLES ===== */
+      .flow-container { display: flex; align-items: center; justify-content: center; gap: clamp(1rem, 3vw, 2rem); flex-wrap: wrap; margin: var(--content-gap) 0; }
+      .flow-box { background: var(--bg-card); border: 2px solid var(--accent); border-radius: 12px; padding: clamp(0.75rem, 2vw, 1.5rem) clamp(1rem, 3vw, 2rem); text-align: center; min-width: 120px; box-shadow: 0 0 30px var(--accent-dim); }
+      .flow-box .icon { font-size: clamp(1.5rem, 3vw, 2.5rem); margin-bottom: 0.5em; }
+      .flow-box .label { font-family: var(--font-mono); color: var(--accent); font-size: var(--body-size); font-weight: 600; }
+      .flow-arrow { color: var(--accent); font-size: clamp(1.5rem, 3vw, 2rem); animation: pulse 2s ease-in-out infinite; }
+      .flow-arrow-down { display: block; text-align: center; font-size: clamp(1.2rem, 2vw, 1.8rem); color: var(--accent); margin: var(--element-gap) 0; }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-      .title-slide h1 {
-        font-size: clamp(2rem, 6vw, 4rem);
-        margin-bottom: var(--content-gap);
-      }
+      .loop-container { position: relative; display: flex; flex-direction: column; align-items: center; }
+      .loop-line { position: absolute; border: 2px dashed var(--accent); opacity: 0.5; }
 
-      .title-slide .subtitle {
-        color: var(--text-secondary);
-        font-size: var(--h3-size);
-      }
+      /* ===== DATA FLOW STYLES ===== */
+      .data-flow-horizontal { display: flex; align-items: stretch; gap: var(--element-gap); flex-wrap: wrap; justify-content: center; }
+      .data-step { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: var(--element-gap); min-width: 200px; max-width: 350px; flex: 1; }
+      .data-step .step-label { background: var(--accent-dim); color: var(--accent); padding: 0.2em 0.6em; border-radius: 4px; font-size: var(--small-size); font-family: var(--font-mono); display: inline-block; margin-bottom: var(--element-gap); }
+      .data-step pre { font-family: var(--font-mono); font-size: var(--code-size); color: var(--text-primary); white-space: pre-wrap; word-break: break-all; margin: 0; background: none; border: none; padding: 0; }
 
-      .title-slide .chapter-badge {
-        display: inline-block;
-        background: var(--accent-dim);
-        color: var(--accent);
-        padding: 0.3em 0.8em;
-        border-radius: 4px;
-        font-size: var(--small-size);
-        margin-bottom: var(--content-gap);
-        border: 1px solid var(--accent);
-      }
+      /* ===== TWO COLUMN LAYOUT ===== */
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--content-gap); align-items: start; }
+      @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
 
-      /* === DIAGRAM === */
-      .diagram {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: clamp(0.5rem, 2vw, 1.5rem);
-        flex-wrap: wrap;
-        margin: var(--content-gap) 0;
-      }
+      /* ===== STEP INDICATOR ===== */
+      .step-indicator { display: flex; gap: var(--element-gap); margin-bottom: var(--content-gap); }
+      .step-dot { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-card); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); color: var(--accent); font-weight: 700; }
+      .step-dot.active { background: var(--accent); color: var(--bg-primary); }
 
-      .diagram-box {
-        background: var(--bg-card);
-        border: 1px solid var(--accent);
-        border-radius: 8px;
-        padding: var(--element-gap) clamp(0.75rem, 2vw, 1.5rem);
-        text-align: center;
-        font-family: var(--font-mono);
-        color: var(--accent);
-        font-size: var(--body-size);
-        box-shadow: 0 0 20px var(--accent-dim);
-      }
+      /* ===== CALLOUT BOX ===== */
+      .callout { background: var(--accent-dim); border-left: 4px solid var(--accent); padding: var(--element-gap) var(--content-gap); border-radius: 0 8px 8px 0; margin: var(--content-gap) 0; }
+      .callout p { color: var(--text-primary); margin: 0; }
 
-      .diagram-arrow {
-        color: var(--accent);
-        font-size: clamp(1rem, 2vw, 1.5rem);
-      }
+      /* ===== ROUNDED IMAGE PLACEHOLDER ===== */
+      .placeholder-box { background: var(--bg-card); border: 2px dashed var(--border-color); border-radius: 12px; padding: var(--content-gap); display: flex; align-items: center; justify-content: center; min-height: 200px; color: var(--text-secondary); font-family: var(--font-mono); }
 
-      .diagram-arrow-down {
-        display: block;
-        text-align: center;
-        font-size: clamp(1rem, 2vw, 1.5rem);
-        color: var(--accent);
-        margin: var(--element-gap) 0;
-      }
-
-      /* === CARDS === */
-      .card-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-        gap: var(--content-gap);
-        margin-top: var(--content-gap);
-      }
-
-      .card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: var(--content-gap);
-      }
-
-      .card h3 {
-        color: var(--accent);
-        margin-bottom: var(--element-gap);
-      }
-
-      .card p {
-        font-size: var(--small-size);
-      }
-
-      /* === DATA FLOW === */
-      .data-flow {
-        display: flex;
-        flex-direction: column;
-        gap: var(--element-gap);
-      }
-
-      .flow-item {
-        display: flex;
-        align-items: flex-start;
-        gap: var(--element-gap);
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        padding: var(--element-gap);
-      }
-
-      .flow-label {
-        background: var(--accent-dim);
-        color: var(--accent);
-        padding: 0.2em 0.6em;
-        border-radius: 4px;
-        font-size: var(--small-size);
-        font-family: var(--font-mono);
-        white-space: nowrap;
-      }
-
-      .flow-content {
-        flex: 1;
-        overflow-x: auto;
-      }
-
-      .flow-content code {
-        font-size: var(--code-size);
-      }
-
-      /* === RESPONSIVE === */
-      @media (max-height: 700px) {
-        :root {
-          --slide-padding: clamp(0.75rem, 3vw, 2rem);
-          --content-gap: clamp(0.4rem, 1.5vw, 1rem);
-          --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
-        }
-      }
-
-      @media (max-height: 600px) {
-        .nav-dots, .keyboard-hint, .decorative {
-          display: none;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after {
-          animation-duration: 0.01ms !important;
-          transition-duration: 0.2s !important;
-        }
-        html {
-          scroll-behavior: auto;
-        }
-      }
-
-      /* === NAVIGATION === */
-      .nav-dots {
-        position: fixed;
-        right: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        z-index: 100;
-      }
-
-      .nav-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--text-secondary);
-        opacity: 0.3;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .nav-dot.active {
-        background: var(--accent);
-        opacity: 1;
-        box-shadow: 0 0 10px var(--accent-glow);
-      }
-
-      .nav-dot:hover {
-        opacity: 0.8;
-      }
-
-      .progress-bar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 3px;
-        background: var(--accent);
-        z-index: 101;
-        transition: width 0.3s ease;
-        box-shadow: 0 0 10px var(--accent-glow);
-      }
-
-      .keyboard-hint {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-family: var(--font-mono);
-        font-size: var(--small-size);
-        color: var(--text-secondary);
-        opacity: 0.5;
-      }
-
-      .keyboard-hint kbd {
-        background: var(--bg-card);
-        padding: 0.2em 0.5em;
-        border-radius: 4px;
-        border: 1px solid var(--border-color);
-      }
-
-      /* === CALL TO ACTION === */
-      .cta-box {
-        background: var(--accent-dim);
-        border: 1px solid var(--accent);
-        border-radius: 8px;
-        padding: var(--content-gap);
-        text-align: center;
-        margin-top: var(--content-gap);
-      }
-
-      .cta-box h3 {
-        color: var(--accent);
-        margin-bottom: var(--element-gap);
-      }
+      @media (max-height: 700px) { :root { --slide-padding: clamp(0.75rem, 3vw, 2rem); --content-gap: clamp(0.5rem, 1.5vw, 1rem); --title-size: clamp(1.5rem, 5vw, 3rem); } }
+      @media (max-height: 600px) { .nav-dots, .keyboard-hint { display: none; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; } html { scroll-behavior: auto; } }
+      .nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+      .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); opacity: 0.3; cursor: pointer; transition: all 0.3s ease; }
+      .nav-dot.active { background: var(--accent); opacity: 1; box-shadow: 0 0 10px var(--accent-glow); }
+      .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent); z-index: 101; transition: width 0.3s ease; box-shadow: 0 0 10px var(--accent-glow); }
     </style>
   </head>
   <body>
     <div class="progress-bar" id="progressBar"></div>
     <nav class="nav-dots" id="navDots"></nav>
 
-    <!-- Slide 1: Title -->
+    <!-- SLIDE 1: Title -->
     <section class="slide title-slide terminal-bg">
-      <div class="scanline"></div>
       <div class="slide-content flex-center flex-col gap-md">
         <span class="chapter-badge reveal">Chapter 01</span>
-        <h1 class="reveal">让LLM调用工具<span class="cursor"></span></h1>
-        <p class="subtitle reveal">Agent Loop的设计</p>
+        <h1 class="reveal reveal-delay-1">Agent Loop</h1>
+        <p class="subtitle reveal reveal-delay-2">让LLM真正"动手"做事</p>
       </div>
     </section>
 
-    <!-- Slide 2: Problem Introduction -->
+    <!-- SLIDE 2: The Problem -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">1. 问题引入</h2>
-        <p class="reveal">当我们让大语言模型（LLM）帮我们完成一个任务时，比如"读取当前目录下的所有文件"，会发生什么？</p>
-        <div class="card-grid reveal">
-          <div class="card">
-            <h3>LLM能做什么</h3>
-            <p>分析问题、理解意图、给出步骤指引</p>
+        <h2 class="reveal">LLM的困境</h2>
+        <div class="two-col reveal reveal-delay-1">
+          <div class="flow-box" style="border-color: #f85149;">
+            <div class="icon">🤔</div>
+            <div class="label">LLM 能做什么</div>
+            <p style="margin-top: 0.5em; color: var(--text-secondary); font-size: var(--small-size);">分析问题、理解意图、给出步骤指引</p>
           </div>
-          <div class="card" style="border-color: #f85149;">
-            <h3 style="color: #f85149;">LLM不能做什么</h3>
-            <p>无法真正执行任何操作——不知道当前目录有什么文件</p>
+          <div class="flow-box" style="border-color: #f85149;">
+            <div class="icon">❌</div>
+            <div class="label">LLM 不能做什么</div>
+            <p style="margin-top: 0.5em; color: var(--text-secondary); font-size: var(--small-size);">无法真正执行操作——不知道当前目录有什么文件</p>
           </div>
         </div>
-        <div class="cta-box reveal">
-          <p><span class="highlight">核心问题：</span>如何让LLM真正"动手"做事，而不是只给建议？</p>
+        <div class="callout reveal reveal-delay-2">
+          <p><span class="highlight">传统方案：</span>LLM给出步骤指引，用户手动执行，再把结果粘贴回给LLM。这中间的"翻译"工作全部由人完成，LLM只是一个"顾问"。</p>
+        </div>
+        <div class="callout reveal reveal-delay-3" style="border-color: #ffa657; background: rgba(255, 166, 87, 0.1);">
+          <p style="font-size: var(--h3-size);"><span class="highlight" style="color: #ffa657;">核心问题：</span>如何让LLM真正"动手"做事，而不是只给建议？</p>
         </div>
       </div>
     </section>
 
-    <!-- Slide 3: Solution -->
+    <!-- SLIDE 3: The Solution - Agent Loop Diagram -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">2. 解决方案</h2>
-        <p class="reveal" style="text-align: center; font-size: var(--h2-size); color: var(--accent); margin-bottom: var(--content-gap);">答案出乎意料地简单——<span class="highlight">用循环</span></p>
-        <div class="diagram reveal">
-          <div class="diagram-box">User<br/>prompt</div>
-          <span class="diagram-arrow">→</span>
-          <div class="diagram-box">LLM</div>
-          <span class="diagram-arrow">→</span>
-          <div class="diagram-box">Tool<br/>execute</div>
+        <h2 class="reveal">解决方案：用循环</h2>
+        <p class="reveal reveal-delay-1" style="text-align: center; color: var(--text-secondary); margin-bottom: var(--content-gap);">答案出乎意料地简单</p>
+
+        <!-- HTML Flow Diagram -->
+        <div class="flow-container reveal reveal-delay-2">
+          <div class="flow-box">
+            <div class="icon">👤</div>
+            <div class="label">User</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary); margin-top: 0.3em;">prompt</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box" style="animation: pulse 2s ease-in-out infinite;">
+            <div class="icon">🧠</div>
+            <div class="label">LLM</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary); margin-top: 0.3em;">思考</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="icon">⚙️</div>
+            <div class="label">Tool</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary); margin-top: 0.3em;">execute</p>
+          </div>
         </div>
-        <span class="diagram-arrow-down">↓ tool_result ↑</span>
-        <p class="text-center reveal" style="color: var(--text-secondary);">(loop until stop)</p>
+
+        <div class="flow-arrow-down reveal reveal-delay-3">↓ tool_result ↑</div>
+
+        <p class="reveal reveal-delay-4" style="text-align: center; color: var(--accent); font-size: var(--h3-size);">(loop until stop)</p>
       </div>
     </section>
 
-    <!-- Slide 4: Loop Logic -->
+    <!-- SLIDE 4: Loop Logic Steps -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">循环逻辑</h2>
+        <h2 class="reveal">循环的逻辑</h2>
+        <div class="step-indicator reveal reveal-delay-1">
+          <div class="step-dot active">1</div>
+          <div class="step-dot">2</div>
+          <div class="step-dot">3</div>
+          <div class="step-dot">4</div>
+          <div class="step-dot">5</div>
+        </div>
         <ul>
-          <li class="reveal">用户提出请求</li>
-          <li class="reveal">LLM分析请求，决定是否需要调用工具</li>
-          <li class="reveal">如果需要，执行工具并获得结果</li>
-          <li class="reveal">把结果反馈给LLM，让它继续分析</li>
-          <li class="reveal">重复直到LLM认为任务完成</li>
+          <li class="reveal reveal-delay-1"><span class="highlight">用户</span>提出请求</li>
+          <li class="reveal reveal-delay-2"><span class="highlight">LLM</span>分析请求，决定是否需要调用工具</li>
+          <li class="reveal reveal-delay-3">如果需要，<span class="highlight">执行工具</span>并获得结果</li>
+          <li class="reveal reveal-delay-4">把结果反馈给<span class="highlight">LLM</span>，让它继续分析</li>
+          <li class="reveal reveal-delay-4">重复直到LLM认为任务<span class="highlight">完成</span></li>
         </ul>
       </div>
     </section>
 
-    <!-- Slide 5: Core Design -->
+    <!-- SLIDE 5: Core Design - Two Pillars -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">2.1 核心设计</h2>
-        <p class="reveal">整个循环依赖两个关键设计：</p>
-        <div class="card-grid reveal">
-          <div class="card">
-            <h3>stop_reason</h3>
-            <p>何时停止</p>
+        <h2 class="reveal">核心设计：两大支柱</h2>
+        <div class="two-col reveal reveal-delay-1">
+          <div class="flow-box" style="min-width: auto;">
+            <div class="icon">🛑</div>
+            <div class="label">stop_reason</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary); margin-top: 0.5em;">何时停止</p>
           </div>
-          <div class="card">
-            <h3>tool_use 块</h3>
-            <p>传递什么任务</p>
+          <div class="flow-box" style="min-width: auto;">
+            <div class="icon">📦</div>
+            <div class="label">tool_use 块</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary); margin-top: 0.5em;">传递什么任务</p>
           </div>
+        </div>
+        <div class="callout reveal reveal-delay-2">
+          <p>整个循环依赖这两个关键设计。用一个条件判断控制整个流程的退出。</p>
         </div>
       </div>
     </section>
 
-    <!-- Slide 6: stop_reason -->
+    <!-- SLIDE 6: stop_reason -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">stop_reason —— 何时停止</h2>
-        <p class="reveal">LLM的回复中包含一个关键字段 <code>stop_reason</code>，它告诉程序LLM为什么停止生成：</p>
-        <ul style="margin-top: var(--content-gap);">
-          <li class="reveal"><code class="highlight">tool_use</code> — LLM想要调用工具，循环继续</li>
-          <li class="reveal"><code class="highlight">end_turn</code> — LLM认为任务完成，循环终止</li>
-          <li class="reveal"><code class="highlight">max_tokens</code> — 达到输出上限，可能是异常终止</li>
-        </ul>
-        <div class="code-block reveal" data-lang="python">
+        <h2 class="reveal">stop_reason — 何时停止</h2>
+        <p class="reveal reveal-delay-1">LLM的回复中包含一个关键字段，告诉程序LLM为什么停止生成：</p>
+        <div class="flow-container reveal reveal-delay-2" style="margin-top: var(--content-gap);">
+          <div class="flow-box" style="border-color: #58a6ff;">
+            <div class="label" style="color: #58a6ff;">tool_use</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary);">LLM想要调用工具<br/><span style="color: #58a6ff;">循环继续</span></p>
+          </div>
+          <div class="flow-box" style="border-color: #3fb950;">
+            <div class="label" style="color: #3fb950;">end_turn</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary);">LLM认为任务完成<br/><span style="color: #3fb950;">循环终止</span></p>
+          </div>
+          <div class="flow-box" style="border-color: #f85149;">
+            <div class="label" style="color: #f85149;">max_tokens</div>
+            <p style="font-size: var(--small-size); color: var(--text-secondary);">达到输出上限<br/><span style="color: #f85149;">可能异常</span></p>
+          </div>
+        </div>
+        <div class="code-block reveal reveal-delay-3" data-lang="python">
           <code>if response.stop_reason != "tool_use":
     return  # LLM说任务完成了，退出循环</code>
         </div>
       </div>
     </section>
 
-    <!-- Slide 7: tool_use block -->
+    <!-- SLIDE 7: tool_use Block -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">tool_use 块 —— 传递什么任务</h2>
-        <p class="reveal">LLM的回复是一个内容块（block）列表，每个块可能是：</p>
-        <ul style="margin-top: var(--content-gap);">
-          <li class="reveal"><code class="highlight">text</code> — 纯文本回复</li>
-          <li class="reveal"><code class="highlight">tool_use</code> — 工具调用请求</li>
-        </ul>
-        <div class="code-block reveal" data-lang="python">
+        <h2 class="reveal">tool_use 块 — 传递什么任务</h2>
+        <p class="reveal reveal-delay-1">LLM的回复是一个内容块列表，每个块可能是：</p>
+        <div class="two-col reveal reveal-delay-2" style="margin-top: var(--content-gap);">
+          <div class="flow-box">
+            <div class="icon">📝</div>
+            <div class="label">text</div>
+            <p style="color: var(--text-secondary);">纯文本回复</p>
+          </div>
+          <div class="flow-box">
+            <div class="icon">🔧</div>
+            <div class="label">tool_use</div>
+            <p style="color: var(--text-secondary);">工具调用请求</p>
+          </div>
+        </div>
+        <div class="code-block reveal reveal-delay-3" data-lang="python">
           <code>for block in response.content:
     if block.type == "tool_use":
         tool_name = block.name
@@ -594,69 +271,176 @@
       </div>
     </section>
 
-    <!-- Slide 8: Data Flow -->
+    <!-- SLIDE 8: Data Flow - Visual -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">2.2 示例数据流转</h2>
-        <div class="data-flow">
-          <div class="flow-item reveal">
-            <span class="flow-label">用户请求</span>
-            <div class="flow-content">
-              <code>{"role": "user", "content": "List all Python files..."}</code>
-            </div>
+        <h2 class="reveal">数据流转 — 全流程可视化</h2>
+        <div class="data-flow-horizontal reveal reveal-delay-1">
+          <div class="data-step">
+            <span class="step-label">Step 1: 用户请求</span>
+            <pre>{"role": "user", 
+ "content": "List all 
+ Python files"}</pre>
           </div>
-          <div class="flow-item reveal">
-            <span class="flow-label">LLM响应</span>
-            <div class="flow-content">
-              <code>{"stop_reason": "tool_use", "content": [{"type": "tool_use", "name": "bash", ...}]}</code>
-            </div>
+          <div class="flow-arrow" style="align-self: center;">→</div>
+          <div class="data-step">
+            <span class="step-label">Step 2: LLM决定调用工具</span>
+            <pre>stop_reason: "tool_use"
+content: [{
+  type: "tool_use",
+  name: "bash",
+  id: "tool_123",
+  input: {"command": 
+    "ls -la *.py"}
+}]</pre>
           </div>
-          <div class="flow-item reveal">
-            <span class="flow-label">工具执行结果</span>
-            <div class="flow-content">
-              <code>{"role": "user", "content": [{"type": "tool_result", "tool_use_id": "tool_123", ...}]}</code>
-            </div>
+        </div>
+        <div class="flow-arrow-down reveal reveal-delay-2">↓</div>
+        <div class="data-flow-horizontal reveal reveal-delay-2">
+          <div class="data-step">
+            <span class="step-label">Step 3: 工具执行</span>
+            <pre>run_bash("ls -la *.py")
+→ "hello.py\ngreet.py
+  \nmain.py"</pre>
           </div>
-          <div class="flow-item reveal">
-            <span class="flow-label">最终LLM响应</span>
-            <div class="flow-content">
-              <code>{"stop_reason": "end_turn", "content": [{"type": "text", "text": "完成!"}]}</code>
-            </div>
+          <div class="flow-arrow" style="align-self: center;">→</div>
+          <div class="data-step">
+            <span class="step-label">Step 4: tool_result反馈</span>
+            <pre>{"role": "user", 
+ "content": [{
+  type: "tool_result",
+  tool_use_id: "tool_123",
+  content: "hello.py
+  \ngreet.py\nmain.py"
+}]}</pre>
           </div>
+        </div>
+        <div class="flow-arrow-down reveal reveal-delay-3">↓</div>
+        <div class="data-step reveal reveal-delay-3" style="max-width: 400px; margin: 0 auto;">
+          <span class="step-label">Step 5: 最终响应</span>
+          <pre>stop_reason: "end_turn"
+content: [{
+  type: "text",
+  text: "目录下有3个
+  Python文件..."
+}]</pre>
         </div>
       </div>
     </section>
 
-    <!-- Slide 9: Hands-on -->
+    <!-- SLIDE 9: User Request Data -->
     <section class="slide terminal-bg">
       <div class="slide-content">
-        <h2 class="reveal">3. 实战尝试</h2>
-        <p class="reveal">运行示例代码：</p>
-        <div class="code-block reveal" data-lang="bash">
+        <h2 class="reveal">数据示例：用户请求</h2>
+        <div class="code-block reveal reveal-delay-1" data-lang="json">
+          <code>{
+    "role": "user",
+    "content": "List all Python files in this directory"
+}</code>
+        </div>
+        <div class="callout reveal reveal-delay-2">
+          <p>用户用自然语言提出请求，这个请求会被加入到messages数组中发送给LLM。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: LLM Response Data -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">数据示例：LLM响应 (tool_use)</h2>
+        <div class="code-block reveal reveal-delay-1" data-lang="json">
+          <code>{
+    "stop_reason": "tool_use",
+    "content": [
+        {
+            "type": "tool_use",
+            "name": "bash",
+            "id": "tool_123",
+            "input": {
+                "command": "ls -la *.py"
+            }
+        }
+    ]
+}</code>
+        </div>
+        <div class="callout reveal reveal-delay-2">
+          <p>LLM分析后决定需要调用工具，<span class="highlight">stop_reason="tool_use"</span>表示循环继续。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 11: Tool Result Data -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">数据示例：工具执行结果</h2>
+        <div class="code-block reveal reveal-delay-1" data-lang="json">
+          <code>{
+    "role": "user",
+    "content": [
+        {
+            "type": "tool_result",
+            "tool_use_id": "tool_123",
+            "content": "hello.py\ngreet.py\nmain.py"
+        }
+    ]
+}</code>
+        </div>
+        <div class="callout reveal reveal-delay-2">
+          <p>工具执行结果被封装成<code>tool_result</code>，通过<code>tool_use_id</code>关联到对应的调用请求，然后反馈给LLM。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 12: Final Response -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">数据示例：最终响应</h2>
+        <div class="code-block reveal reveal-delay-1" data-lang="json">
+          <code>{
+    "stop_reason": "end_turn",
+    "content": [
+        {
+            "type": "text",
+            "text": "当前目录下有3个Python文件：
+            hello.py、greet.py、main.py"
+        }
+    ]
+}</code>
+        </div>
+        <div class="callout reveal reveal-delay-2" style="border-color: #3fb950; background: rgba(63, 185, 80, 0.1);">
+          <p><span class="highlight" style="color: #3fb950;">stop_reason="end_turn"</span> 表示LLM认为任务完成，循环终止！</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 13: Hands-on -->
+    <section class="slide terminal-bg">
+      <div class="slide-content">
+        <h2 class="reveal">实战尝试</h2>
+        <div class="code-block reveal reveal-delay-1" data-lang="bash">
           <code>python agents/s01_agent_loop.py</code>
         </div>
-        <p class="reveal" style="margin-top: var(--content-gap);">试试这些命令：</p>
-        <ul>
-          <li class="reveal">Create a file called hello.py that prints "Hello, World!"</li>
-          <li class="reveal">List all Python files in this directory</li>
-          <li class="reveal">What is the current git branch?</li>
+        <p class="reveal reveal-delay-2" style="margin-top: var(--content-gap);">试试这些命令：</p>
+        <ul class="reveal reveal-delay-3">
+          <li>Create a file called hello.py that prints "Hello, World!"</li>
+          <li>List all Python files in this directory</li>
+          <li>What is the current git branch?</li>
         </ul>
+        <div class="callout reveal reveal-delay-4">
+          <p>你会看到LLM如何一步步思考、调用工具、获取结果、再继续思考的完整过程。</p>
+        </div>
       </div>
     </section>
 
-    <!-- Slide 10: End -->
+    <!-- SLIDE 14: End -->
     <section class="slide title-slide terminal-bg">
-      <div class="scanline"></div>
       <div class="slide-content flex-center flex-col gap-md">
-        <h1 class="reveal">Thanks<span class="cursor"></span></h1>
-        <p class="subtitle reveal">Chapter 01 - Agent Loop</p>
+        <h1 class="reveal">Thanks</h1>
+        <p class="subtitle reveal reveal-delay-1">Chapter 01 - Agent Loop</p>
       </div>
     </section>
 
     <script>
-      /* ===========================================
-         SLIDE PRESENTATION CONTROLLER
-         =========================================== */
       class SlidePresentation {
         constructor() {
           this.slides = document.querySelectorAll(".slide");
@@ -669,13 +453,7 @@
           this.setupNavDots();
           this.init();
         }
-
-        init() {
-          setTimeout(() => {
-            this.slides[0].classList.add("visible");
-          }, 100);
-        }
-
+        init() { setTimeout(() => { this.slides[0].classList.add("visible"); }, 100); }
         setupIntersectionObserver() {
           const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -688,10 +466,8 @@
               }
             });
           }, { threshold: 0.5 });
-
           this.slides.forEach(slide => observer.observe(slide));
         }
-
         setupKeyboardNav() {
           document.addEventListener("keydown", (e) => {
             if (e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
@@ -703,56 +479,25 @@
             }
           });
         }
-
-        nextSlide() {
-          if (this.currentSlide < this.slides.length - 1) {
-            this.currentSlide++;
-            this.scrollToSlide(this.currentSlide);
-          }
-        }
-
-        prevSlide() {
-          if (this.currentSlide > 0) {
-            this.currentSlide--;
-            this.scrollToSlide(this.currentSlide);
-          }
-        }
-
-        scrollToSlide(index) {
-          this.slides[index].scrollIntoView({ behavior: "smooth" });
-        }
-
-        setupProgressBar() {
-          this.updateProgressBar();
-        }
-
-        updateProgressBar() {
-          const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
-          this.progressBar.style.width = progress + "%";
-        }
-
+        nextSlide() { if (this.currentSlide < this.slides.length - 1) { this.currentSlide++; this.scrollToSlide(this.currentSlide); } }
+        prevSlide() { if (this.currentSlide > 0) { this.currentSlide--; this.scrollToSlide(this.currentSlide); } }
+        scrollToSlide(index) { this.slides[index].scrollIntoView({ behavior: "smooth" }); }
+        setupProgressBar() { this.updateProgressBar(); }
+        updateProgressBar() { const progress = ((this.currentSlide + 1) / this.slides.length) * 100; this.progressBar.style.width = progress + "%"; }
         setupNavDots() {
           this.navDotsContainer.innerHTML = "";
           this.slides.forEach((_, index) => {
             const dot = document.createElement("div");
             dot.className = "nav-dot" + (index === 0 ? " active" : "");
-            dot.addEventListener("click", () => {
-              this.currentSlide = index;
-              this.scrollToSlide(index);
-              this.updateNavDots();
-            });
+            dot.addEventListener("click", () => { this.currentSlide = index; this.scrollToSlide(index); this.updateNavDots(); });
             this.navDotsContainer.appendChild(dot);
           });
         }
-
         updateNavDots() {
           const dots = this.navDotsContainer.querySelectorAll(".nav-dot");
-          dots.forEach((dot, index) => {
-            dot.classList.toggle("active", index === this.currentSlide);
-          });
+          dots.forEach((dot, index) => { dot.classList.toggle("active", index === this.currentSlide); });
         }
       }
-
       new SlidePresentation();
     </script>
   </body>
