@@ -43,8 +43,13 @@
       padding: clamp(1.5rem, 4vw, 3rem);
       display: flex; flex-direction: column; justify-content: center;
     }
-    h1 { font: 800 clamp(2rem, 6vw, 4.5rem) var(--font); color: var(--text-dark); line-height: 1.1; }
-    h2 { font: 700 clamp(1.5rem, 3.5vw, 2.5rem) var(--font); color: var(--text-dark); margin-bottom: 1rem; }
+    .slide-full h1, .slide-full h2, .slide-full h3 { color: var(--text-light); }
+    .slide-full p, .slide-full ul li, .slide-full .flow-sub { color: rgba(255,255,255,0.8); }
+    .slide-full .flow-label { color: var(--text-light); }
+    .slide-full .flow-arrow { color: var(--text-light); }
+    .slide-full .text-gray { color: rgba(255,255,255,0.6); }
+    h1 { font: 800 clamp(2rem, 6vw, 4.5rem) var(--font); color: var(--text-light); line-height: 1.1; }
+    h2 { font: 700 clamp(1.5rem, 3.5vw, 2.5rem) var(--font); color: var(--text-light); margin-bottom: 1rem; }
     h3 { font: 600 clamp(1.1rem, 2vw, 1.5rem) var(--font); color: var(--accent-blue); margin-bottom: 0.5rem; }
     p { font: 400 clamp(0.9rem, 1.5vw, 1.1rem) var(--font); color: var(--text-gray); line-height: 1.6; }
     ul { list-style: none; }
